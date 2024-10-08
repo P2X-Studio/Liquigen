@@ -1,5 +1,6 @@
 
 /smart-contracts/node_modules
+/backend/node_modules
 /metadata-generator/node_modules
 metadata-generator/.env
 frontend/.env
