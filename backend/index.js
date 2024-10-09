@@ -2,6 +2,7 @@ import express from "express";
 import { ethers } from "ethers";
 import { config } from "dotenv";
 import kimFactoryABI from "../smart-contracts/artifacts/contracts/LPNFTFactory.sol/KimLPNFTFactory.json" with { type: "json" };
+import kimPairABI from "../smart-contracts/artifacts/contracts/LPNFTPair.sol/KimLPNFTPair.json" with { type: "json" };
 
 // Load .env file
 config({
@@ -19,16 +20,33 @@ app.get("/", (req, res) => {
 // Ethers.js setup to listen for Kim events
 const provider = new ethers.JsonRpcProvider();
 
-// ~~~~~~ Kim Factory Event Listeners ~~~~~~
 const kimFactoryContract = new ethers.Contract(
   process.env.LPNFTFACTORY_CONTRACT_ADDRESS,
   kimFactoryABI.abi,
   provider,
 );
 
+// ~~~~~~ Kim Factory Event Listeners ~~~~~~
 // Listen for Create Pair event
 kimFactoryContract.on("PairCreated", async (res) => {
-  console.log("Pair Created: ", res);
+  console.log("Pair Created: ");
+  console.log(res);
+  const kimPairContract = new ethers.Contract(res, kimPairABI.abi, provider);
+  // ~~~~~~ Kim Pair Event Listeners ~~~~~~
+  // Listen for Mint event
+  kimPairContract.on("Mint", async (res) => {
+    console.log("Mint: ", res);
+  });
+
+  // Listen for Burn event
+  kimPairContract.on("Burn", async (res) => {
+    console.log("Burn: ", res);
+  });
+
+  // Listen for Swap event
+  kimPairContract.on("Swap", async (res) => {
+    console.log("Swap: ", res);
+  });
 });
 
 // ~~~~~~ Start the server ~~~~~~
