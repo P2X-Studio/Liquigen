@@ -6,6 +6,9 @@ import {MetadataLibrary} from "./lib/OnChainMetadata.sol";
 import "./LiquigenFactory.sol";
 import "erc721a/contracts/extensions/ERC721AQueryable.sol";
 
+// TODO: Add mappings for exempt addresses as well as a function to set them
+// TODO: Add a mapping for locked tokens as well as a function to set token status'
+
 contract LiquigenPair is ERC721AQueryable, Ownable {
     using MetadataLibrary for MetadataLibrary.Attribute[];
 
