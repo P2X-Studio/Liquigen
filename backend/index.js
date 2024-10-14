@@ -28,10 +28,14 @@ const kimFactoryContract = new ethers.Contract(
 
 // ~~~~~~ Kim Factory Event Listeners ~~~~~~
 // Listen for Create Pair event
-kimFactoryContract.on("PairCreated", async (res) => {
+kimFactoryContract.on("PairCreated", async (t0, t1, pair, lp404, len) => {
   console.log("Pair Created: ");
-  console.log(res);
-  const kimPairContract = new ethers.Contract(res, kimPairABI.abi, provider);
+  console.log("Token 0: ", t0);
+  console.log("Token 1: ", t1);
+  console.log("Pair: ", pair);
+  console.log("LP404: ", lp404);
+  console.log("Len: ", len);
+  const kimPairContract = new ethers.Contract(pair, kimPairABI.abi, provider);
   // ~~~~~~ Kim Pair Event Listeners ~~~~~~
   // Listen for Mint event
   kimPairContract.on("Mint", async (res) => {
