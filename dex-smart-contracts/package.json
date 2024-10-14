@@ -1,0 +1,17 @@
+{
+  "name": "kim-smart-contracts",
+  "version": "1.0.0",
+  "description": "LP404 contracts built to use with existing DEX without contract modifications or updates",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "kim-core": "github:kim-protocol/kim-contracts"
+  },
+  "devDependencies": {
+    "erc721a": "^4.3.0"
+  }
+}

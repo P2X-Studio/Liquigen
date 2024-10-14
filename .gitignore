@@ -11,3 +11,4 @@ frontend/.env
 */.env
 /layers
 layers.zip
+/dex-smart-contracts/node_modules
