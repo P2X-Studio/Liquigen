@@ -12,6 +12,8 @@
     "kim-core": "github:kim-protocol/kim-contracts"
   },
   "devDependencies": {
-    "erc721a": "^4.3.0"
+    "@nomicfoundation/hardhat-toolbox-viem": "^3.0.0",
+    "erc721a": "^4.3.0",
+    "hardhat": "^2.22.13"
   }
 }
