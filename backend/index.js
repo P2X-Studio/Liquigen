@@ -2,7 +2,8 @@ import express from "express";
 import { ethers } from "ethers";
 import { config } from "dotenv";
 import kimFactoryABI from "../smart-contracts/artifacts/contracts/LPNFTFactory.sol/KimLPNFTFactory.json" with { type: "json" };
-import kimPairABI from "../smart-contracts/artifacts/contracts/LPNFTPair.sol/KimLPNFTPair.json" with { type: "json" };
+import lp404PairABI from "../smart-contracts/artifacts/contracts/extensions/LP404.sol/LP404.json" with { type: "json" };
+// TODO: Import the LiquigenPair contract ABI here
 
 // Load .env file
 config({
@@ -12,7 +13,6 @@ config({
 // Epress server setup
 const app = express();
 const port = 8080;
-
 app.get("/", (req, res) => {
   res.send("Im alive!");
 });
@@ -20,6 +20,14 @@ app.get("/", (req, res) => {
 // Ethers.js setup to listen for Kim events
 const provider = new ethers.JsonRpcProvider();
 
+// TODO: Create a new instance of the LiquigenPair contract
+// const liquigenFactoryContract = new ethers.Contract(
+//   process.env.LPNFTFACTORY_CONTRACT_ADDRESS,
+//   kimFactoryABI.abi,
+//   provider,
+// );
+
+// Create a new instance of the Kim Factory
 const kimFactoryContract = new ethers.Contract(
   process.env.LPNFTFACTORY_CONTRACT_ADDRESS,
   kimFactoryABI.abi,
@@ -29,26 +37,40 @@ const kimFactoryContract = new ethers.Contract(
 // ~~~~~~ Kim Factory Event Listeners ~~~~~~
 // Listen for Create Pair event
 kimFactoryContract.on("PairCreated", async (t0, t1, pair, lp404, len) => {
-  console.log("Pair Created: ");
-  console.log("Token 0: ", t0);
-  console.log("Token 1: ", t1);
-  console.log("Pair: ", pair);
-  console.log("LP404: ", lp404);
-  console.log("Len: ", len);
-  const kimPairContract = new ethers.Contract(pair, kimPairABI.abi, provider);
+  console.log("PairCreated: ", t0, t1, pair, lp404, len);
+  const lp404PairContract = new ethers.Contract(
+    lp404,
+    lp404PairABI.abi,
+    provider,
+  );
+  const name = await lp404PairContract.name();
+  const symbol = await lp404PairContract.symbol();
+  const traitCID = await lp404PairContract.traitCID();
+  const description = await lp404PairContract.description();
+  const owner = await lp404PairContract.owner();
+  console.log("Pair details: ", name, symbol, traitCID, description, owner);
+
+  // TODO: Create a new LiquigenPair contract
+  // const liquigenPairData = await liquigenFactoryContract.createPair(
+  //   name,
+  //   symbol,
+  //   traitCID,
+  //   description,
+  //   owner,
+  // );
+
+  console.log("LiquigenPairData: ", pair);
   // ~~~~~~ Kim Pair Event Listeners ~~~~~~
   // Listen for Mint event
-  kimPairContract.on("Mint", async (res) => {
-    console.log("Mint: ", res);
-  });
+  lp404PairContract.on("Mint", async (res) => {});
 
   // Listen for Burn event
-  kimPairContract.on("Burn", async (res) => {
+  lp404PairContract.on("Burn", async (res) => {
     console.log("Burn: ", res);
   });
 
   // Listen for Swap event
-  kimPairContract.on("Swap", async (res) => {
+  lp404PairContract.on("Swap", async (res) => {
     console.log("Swap: ", res);
   });
 });
