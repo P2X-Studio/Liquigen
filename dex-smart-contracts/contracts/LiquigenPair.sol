@@ -6,13 +6,17 @@ import {MetadataLibrary} from "./lib/OnChainMetadata.sol";
 import "./LiquigenFactory.sol";
 import "erc721a/contracts/extensions/ERC721AQueryable.sol";
 
-// TODO: Add mappings for exempt addresses as well as a function to set them
-// TODO: Add a mapping for locked tokens as well as a function to set token status'
+// TODO: call lpPairContract on transfers
+// TODO: call lpPairContract to verify holding before mint
+
 
 contract LiquigenPair is ERC721AQueryable, Ownable {
     using MetadataLibrary for MetadataLibrary.Attribute[];
 
     error Unauthorized();
+    error LengthMisMatch();
+    error AlreadyExists();
+    error InvalidTokenId();
 
     struct Attributes {
         string[] traitTypes;
@@ -21,12 +25,16 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     }
 
     mapping(uint => Attributes) public attributes; // tokenId => Attributes of the ERC721s
+    mapping(uint => bool) public locked; // tokenId => bool. Keeps track of the locked status of the ERC721s
+    mapping(address => bool) public exempt; // Keeps track of addresses with exempt privileges
     mapping(bytes32 => bool) public uniqueness; // dna => bool. Keeps track of the uniqueness of the attributes
     mapping(uint => bool) private circulating; // tokenId => bool. Keeps track of the circulating status of the ERC721s
     mapping(address => bool) private admin; //Keeps track of addresses with admin privileges
 
     address public factory;
     address public lpPairContract;
+
+    uint public requireToMint;
 
     bool internal initialized = false;
 
@@ -61,7 +69,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Setters ~~~~~~~~~~~~~~~~~~~~~~~~~
-    function initialize(address _factory, address _pair) external {
+    function initialize(address _factory, address _pair, uint _requireToMint) external {
         require(!initialized, "This contract has already been initialized");
         initialized = true;
         factory = _factory;
@@ -165,18 +173,4 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     function setAdminPrivileges(address _admin, bool _state) public onlyAdmin {
         admin[_admin] = _state;
     }
-
-    // Function that allows external Pair Contract to burn tokens
-    function burnERC20(address _from, uint256 _value) public onlyAdmin {
-        _transferERC20WithERC721(_from, address(0), _value);
-    }
-
-    function _withdrawAndStoreERC721(address _from) internal override {
-        uint256 id = _owned[_from][_owned[_from].length - 1];
-
-        resetNFT(id);
-
-        super._withdrawAndStoreERC721(_from);
-    }
-
 }

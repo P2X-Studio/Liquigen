@@ -17,17 +17,19 @@ contract LiquigenFactory {
         string calldata _symbol,
         string calldata _traitCID,
         string calldata _description,
-        address owner
+        address _owner, 
+        address _lpPairContract, 
+        uint _requiredToMint
     ) external returns (address) {
         bytes memory constructorArgs = abi.encode(
             _name,
             _symbol,
             _traitCID,
             _description,
-            owner
+            _owner
         );
         bytes memory bytecode = abi.encodePacked(
-            type(LP404).creationCode,
+            type(LiquigenPair).creationCode,
             constructorArgs
         );
         bytes32 salt = keccak256(abi.encodePacked(constructorArgs));
@@ -36,7 +38,9 @@ contract LiquigenFactory {
             liquigenPair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
         require(liquigenPair != address(0), "LiquigenFactory: CREATION_FAILED");
-        emit PairCreated(owner, liquigenPair);
+        LiquigenPair(liquigenPair).initialize(address(this), _lpPairContract, _requiredToMint);
+
+        emit PairCreated(_owner, liquigenPair);
         return liquigenPair;
     }
 
