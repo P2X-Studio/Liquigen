@@ -144,6 +144,10 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         uniqueness[_dna] = true;
     }
 
+    function setLocked(uint _tokenId, bool _state) external onlyAdmin {
+        locked[_tokenId] = _state;
+    }
+
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Getters ~~~~~~~~~~~~~~~~~~~~~~~~~
     function getTokenAttributes(
         uint tokenId
