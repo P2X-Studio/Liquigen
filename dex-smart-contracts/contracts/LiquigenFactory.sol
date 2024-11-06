@@ -12,22 +12,43 @@ contract LiquigenFactory {
         address indexed collection
     );
 
+    error Unauthorized();
+
+    mapping(address => bool) public exempt; // Keeps track of addresses with exempt privileges
+    mapping(address => bool) private admin; //Keeps track of addresses with admin privileges
+
+    string internal imageUrl = "lp-nft.xyz/nft-viewer/";
+
+    constructor() {
+        admin[msg.sender] = true;
+    }
+
+    // ~~~~~~~~~~~~~~~~~~~~ Modifiers ~~~~~~~~~~~~~~~~~~~~
+    modifier onlyAdmin() {
+        if (!admin[msg.sender]) {
+            revert Unauthorized();
+        }
+        _;
+    }
+
     function createPair(
         string calldata _name,
         string calldata _symbol,
         string calldata _traitCID,
         string calldata _description,
-        address owner
-    ) external returns (address) {
+        address _owner, 
+        address _lpPairContract, 
+        uint _mintThreshold
+    ) external onlyAdmin returns (address) {
         bytes memory constructorArgs = abi.encode(
             _name,
             _symbol,
             _traitCID,
             _description,
-            owner
+            _owner
         );
         bytes memory bytecode = abi.encodePacked(
-            type(LP404).creationCode,
+            type(LiquigenPair).creationCode,
             constructorArgs
         );
         bytes32 salt = keccak256(abi.encodePacked(constructorArgs));
@@ -36,7 +57,9 @@ contract LiquigenFactory {
             liquigenPair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
         require(liquigenPair != address(0), "LiquigenFactory: CREATION_FAILED");
-        emit PairCreated(owner, liquigenPair);
+        LiquigenPair(liquigenPair).initialize(address(this), _lpPairContract, _mintThreshold);
+
+        emit PairCreated(_owner, liquigenPair);
         return liquigenPair;
     }
 
@@ -46,5 +69,27 @@ contract LiquigenFactory {
         address collection
     ) external {
         emit NeedsMetadata(tokenId, owner, collection);
+    }
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~ Setters ~~~~~~~~~~~~~~~~~~~~~~~~~
+    function updateImageUrl(string calldata _imageUrl) external onlyAdmin {
+        imageUrl = _imageUrl;
+    }
+
+    function updateExempt(address _address, bool _exempt) external onlyAdmin {
+        exempt[_address] = _exempt;
+    }
+
+    function setAdminPrivileges(address _admin, bool _state) public onlyAdmin {
+        admin[_admin] = _state;
+    }
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~ Getters ~~~~~~~~~~~~~~~~~~~~~~~~~
+    function getURI() external view returns (string memory) {
+        return imageUrl;
+    }
+
+    function isExempt(address _address) external view returns (bool) {
+        return exempt[_address];
     }
 }

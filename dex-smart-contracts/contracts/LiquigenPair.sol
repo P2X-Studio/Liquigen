@@ -2,17 +2,17 @@
 pragma solidity >=0.8.9 <0.9.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MetadataLibrary} from "./lib/OnChainMetadata.sol";
 import "./LiquigenFactory.sol";
 import "erc721a/contracts/extensions/ERC721AQueryable.sol";
-
-// TODO: Add mappings for exempt addresses as well as a function to set them
-// TODO: Add a mapping for locked tokens as well as a function to set token status'
 
 contract LiquigenPair is ERC721AQueryable, Ownable {
     using MetadataLibrary for MetadataLibrary.Attribute[];
 
     error Unauthorized();
+    error LengthMisMatch();
+    error AlreadyExists();
 
     struct Attributes {
         string[] traitTypes;
@@ -21,19 +21,20 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     }
 
     mapping(uint => Attributes) public attributes; // tokenId => Attributes of the ERC721s
+    mapping(uint => bool) public locked; // tokenId => bool. Keeps track of the locked status of the ERC721s
     mapping(bytes32 => bool) public uniqueness; // dna => bool. Keeps track of the uniqueness of the attributes
-    mapping(uint => bool) private circulating; // tokenId => bool. Keeps track of the circulating status of the ERC721s
     mapping(address => bool) private admin; //Keeps track of addresses with admin privileges
 
     address public factory;
     address public lpPairContract;
 
+    uint public mintThreshold;
+
     bool internal initialized = false;
 
     string public traitCID;
+    string public tokenName;
     string public description;
-
-    string internal uri = "lp-nft.xyz/nft-viewer/";
 
     constructor(
         string memory _name,
@@ -45,6 +46,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         admin[_initialOwner] = true;
         traitCID = _traitCID;
         description = _description;
+        tokenName = _name;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~ Modifiers ~~~~~~~~~~~~~~~~~~~~
@@ -55,27 +57,63 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         _;
     }
 
+    // ~~~~~~~~~~~~~~~~~~~~ Overrides ~~~~~~~~~~~~~~~~~~~~
+    function transferFrom(address _from, address _to, uint256 _tokenId) public payable override(ERC721A, IERC721A) {
+        require(!locked[_tokenId], "Token is locked");
+
+        if (LiquigenFactory(factory).exempt(_from)) {
+            IERC20(lpPairContract).transferFrom(address(this), _to, mintThreshold);
+
+            super.transferFrom(_from, _to, _tokenId);
+            return;
+        } else {
+            require(IERC20(lpPairContract).balanceOf(_from) >= mintThreshold, "Insufficient LP token balance!");
+            require(IERC20(lpPairContract).allowance(_from, address(this)) >= mintThreshold, "Insufficient allowance for LP token");
+
+            if (LiquigenFactory(factory).exempt(_to)) {
+                // Transfer the LP token to this contract
+                IERC20(lpPairContract).transferFrom(_from, address(this), mintThreshold);
+            } else {
+                // Transfer the LP token to the NFT receiver
+                IERC20(lpPairContract).transferFrom(_from, _to, mintThreshold);
+            }
+
+            // Transfer the NFT
+            super.transferFrom(_from, _to, _tokenId);
+        }
+    }
+
+    function approve(address _to, uint256 _tokenId) public payable override(ERC721A, IERC721A) {
+        require(!locked[_tokenId], "Token is locked");
+        require(IERC20(lpPairContract).allowance(_msgSender(), address(this)) >= mintThreshold, "Insufficient allowance for LP token");
+
+        super.approve(_to, _tokenId);
+    }
+
     // ~~~~~~~~~~~~~~~~~~~~ Mint Functions ~~~~~~~~~~~~~~~~~~~~
     function mint(address _to, uint _mintAmount) external onlyAdmin {
+        require(IERC20(lpPairContract).balanceOf(_to) >= mintThreshold, "Insufficient LP token balance!");
+
         _safeMint(_to, _mintAmount);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Setters ~~~~~~~~~~~~~~~~~~~~~~~~~
-    function initialize(address _factory, address _pair) external {
+    function initialize(address _factory, address _pair, uint _mintThreshold) external {
         require(!initialized, "This contract has already been initialized");
         initialized = true;
         factory = _factory;
         admin[_factory] = true;
         lpPairContract = _pair;
-        admin[_pair] = true;
     }
 
     function setCollectionInfo(
         string calldata _traitCID,
-        string calldata _description
+        string calldata _description,
+        string calldata _tokenName
     ) external onlyAdmin {
         traitCID = _traitCID;
         description = _description;
+        tokenName = _tokenName;
     }
 
     function setAttributes(
@@ -106,15 +144,8 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         uniqueness[_dna] = true;
     }
 
-    function resetNFT(uint _tokenId) internal onlyAdmin {
-        bytes32 dna = attributes[_tokenId].dna;
-
-        uniqueness[dna] = false;
-        circulating[_tokenId] = false;
-
-        attributes[_tokenId].traitTypes = [""];
-        attributes[_tokenId].values = [""];
-        attributes[_tokenId].dna = 0;
+    function setLocked(uint _tokenId, bool _state) external onlyAdmin {
+        locked[_tokenId] = _state;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Getters ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -134,11 +165,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
 
     function tokenURI(
         uint256 _id
-    ) public view override returns (string memory) {
-        if (!circulating[_id]) {
-            revert InvalidTokenId();
-        }
-
+    ) public view override(ERC721A, IERC721A) returns (string memory) {
         MetadataLibrary.Attribute[]
             memory attrs = new MetadataLibrary.Attribute[](
                 attributes[_id].values.length
@@ -150,10 +177,12 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
             );
         }
 
+        string memory uri = LiquigenFactory(factory).getURI();
+
         return
             MetadataLibrary.buildTokenURI(
                 _id,
-                name,
+                tokenName,
                 description,
                 uri,
                 address(this),
@@ -165,18 +194,4 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     function setAdminPrivileges(address _admin, bool _state) public onlyAdmin {
         admin[_admin] = _state;
     }
-
-    // Function that allows external Pair Contract to burn tokens
-    function burnERC20(address _from, uint256 _value) public onlyAdmin {
-        _transferERC20WithERC721(_from, address(0), _value);
-    }
-
-    function _withdrawAndStoreERC721(address _from) internal override {
-        uint256 id = _owned[_from][_owned[_from].length - 1];
-
-        resetNFT(id);
-
-        super._withdrawAndStoreERC721(_from);
-    }
-
 }
