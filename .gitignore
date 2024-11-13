@@ -12,3 +12,4 @@ layers.zip
 /dex-smart-contracts/node_modules
 /dex-backend/node_modules
 /dex-backend/node_modules
+dex-backend/.env

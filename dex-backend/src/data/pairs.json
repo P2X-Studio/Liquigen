@@ -1,0 +1,14 @@
+{
+  "pairs": [
+    {
+      "erc20Address": "0x1234567890abcdef1234567890abcdef12345678",
+      "erc721Address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+      "threshold": 1000
+    },
+    {
+      "erc20Address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+      "erc721Address": "0x9876543210abcdef9876543210abcdef98765432",
+      "threshold": 500
+    }
+  ]
+}

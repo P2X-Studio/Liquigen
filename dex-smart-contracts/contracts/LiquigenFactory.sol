@@ -19,8 +19,11 @@ contract LiquigenFactory {
 
     string internal imageUrl = "lp-nft.xyz/nft-viewer/";
 
+    address public liquigenWallet;
+
     constructor() {
         admin[msg.sender] = true;
+        liquigenWallet = msg.sender;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~ Modifiers ~~~~~~~~~~~~~~~~~~~~
@@ -72,16 +75,35 @@ contract LiquigenFactory {
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Setters ~~~~~~~~~~~~~~~~~~~~~~~~~
-    function updateImageUrl(string calldata _imageUrl) external onlyAdmin {
+    function updateImageUrl(
+        string calldata _imageUrl
+    ) external onlyAdmin {
         imageUrl = _imageUrl;
     }
 
-    function updateExempt(address _address, bool _exempt) external onlyAdmin {
+    function updateExempt(
+        address _address, 
+        bool _exempt
+    ) external onlyAdmin {
         exempt[_address] = _exempt;
     }
 
-    function setAdminPrivileges(address _admin, bool _state) public onlyAdmin {
+    function setAdminPrivileges(
+        address _admin, 
+        bool _state
+    ) public onlyAdmin {
+        if (!_state) {
+            require(_admin != liquigenWallet, "Cannot remove super admin privileges");
+        }
         admin[_admin] = _state;
+    }
+
+    function setLiquigenWallet(
+        address _liquigenWallet
+    ) external onlyAdmin {
+        require(msg.sender == liquigenWallet, "LiquigenFactory: UNAUTHORIZED");
+        require(_liquigenWallet != address(0), "LiquigenFactory: INVALID_ADDRESS");
+        liquigenWallet = _liquigenWallet;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Getters ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -89,7 +111,9 @@ contract LiquigenFactory {
         return imageUrl;
     }
 
-    function isExempt(address _address) external view returns (bool) {
+    function isExempt(
+        address _address
+    ) external view returns (bool) {
         return exempt[_address];
     }
 }

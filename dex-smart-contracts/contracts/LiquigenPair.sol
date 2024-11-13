@@ -58,7 +58,11 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     }
 
     // ~~~~~~~~~~~~~~~~~~~~ Overrides ~~~~~~~~~~~~~~~~~~~~
-    function transferFrom(address _from, address _to, uint256 _tokenId) public payable override(ERC721A, IERC721A) {
+    function transferFrom(
+        address _from, 
+        address _to, 
+        uint256 _tokenId
+    ) public payable override(ERC721A, IERC721A) {
         require(!locked[_tokenId], "Token is locked");
 
         if (LiquigenFactory(factory).exempt(_from)) {
@@ -83,7 +87,10 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         }
     }
 
-    function approve(address _to, uint256 _tokenId) public payable override(ERC721A, IERC721A) {
+    function approve(
+        address _to, 
+        uint256 _tokenId
+    ) public payable override(ERC721A, IERC721A) {
         require(!locked[_tokenId], "Token is locked");
         require(IERC20(lpPairContract).allowance(_msgSender(), address(this)) >= mintThreshold, "Insufficient allowance for LP token");
 
@@ -91,14 +98,21 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     }
 
     // ~~~~~~~~~~~~~~~~~~~~ Mint Functions ~~~~~~~~~~~~~~~~~~~~
-    function mint(address _to, uint _mintAmount) external onlyAdmin {
+    function mint(
+        address _to, 
+        uint _mintAmount
+    ) external onlyAdmin {
         require(IERC20(lpPairContract).balanceOf(_to) >= mintThreshold, "Insufficient LP token balance!");
 
         _safeMint(_to, _mintAmount);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Setters ~~~~~~~~~~~~~~~~~~~~~~~~~
-    function initialize(address _factory, address _pair, uint _mintThreshold) external {
+    function initialize(
+        address _factory, 
+        address _pair, 
+        uint _mintThreshold
+    ) external {
         require(!initialized, "This contract has already been initialized");
         initialized = true;
         factory = _factory;
@@ -145,7 +159,10 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         uniqueness[_dna] = true;
     }
 
-    function setLocked(uint _tokenId, bool _state) external onlyAdmin {
+    function setLocked(
+        uint _tokenId, 
+        bool _state
+    ) external onlyAdmin {
         locked[_tokenId] = _state;
     }
 
@@ -192,7 +209,14 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Admin Functions ~~~~~~~~~~~~~~~~~~~~~~~~~
-    function setAdminPrivileges(address _admin, bool _state) public onlyAdmin {
+    function setAdminPrivileges(
+        address _admin, 
+        bool _state
+    ) public onlyAdmin {
+        address liquigenWallet = LiquigenFactory(factory).liquigenWallet();
+        if (!_state) {
+            require(_admin != liquigenWallet, "Cannot remove super admin privileges");
+        }
         admin[_admin] = _state;
     }
 }
