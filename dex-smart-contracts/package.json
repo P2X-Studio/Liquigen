@@ -1,5 +1,5 @@
 {
-  "name": "kim-smart-contracts",
+  "name": "dex-smart-contracts",
   "version": "1.0.0",
   "description": "LP404 contracts built to use with existing DEX without contract modifications or updates",
   "main": "index.js",
@@ -9,9 +9,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^16.4.5",
     "kim-core": "github:kim-protocol/kim-contracts"
   },
   "devDependencies": {
-    "erc721a": "^4.3.0"
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "erc721a": "^4.3.0",
+    "hardhat": "^2.22.15",
+    "hardhat-contract-sizer": "^2.10.0"
   }
 }

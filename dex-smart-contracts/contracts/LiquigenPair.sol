@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.9 <0.9.0;
+pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -42,7 +42,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         string memory _traitCID,
         string memory _description,
         address _initialOwner
-    ) ERC721A(_name, _symbol) Ownable(_initialOwner) {
+    ) ERC721A(_name, _symbol) Ownable() {
         admin[_initialOwner] = true;
         traitCID = _traitCID;
         description = _description;
@@ -104,6 +104,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         factory = _factory;
         admin[_factory] = true;
         lpPairContract = _pair;
+        mintThreshold = _mintThreshold;
     }
 
     function setCollectionInfo(
