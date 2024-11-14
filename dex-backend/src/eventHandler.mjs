@@ -8,8 +8,22 @@ import {
 } from './config.mjs';
 import { ethers, Wallet } from 'ethers';
 
+// Set Liquigen default values. These can be updated in-contract later
+const traitCID = '';
+const description = 'Liquigen NFT represent liquity positions!';
+const liquigenWallet = '';
+
 async function processPairCreated(token0, token1, pair) {
-  // Process pair created event
+  // Determine pair name
+  const token0Contract = new ethers.Contract(token0, dexPairAbi.abi, provider);
+  const token0Symbol = await token0Contract.symbol();
+  const token1Contract = new ethers.Contract(token1, dexPairAbi.abi, provider);
+  const token1Symbol = await token1Contract.symbol();
+  const name = `${token0Symbol}-${token1Symbol} Liquigen NFT`;
+  // Determine pair symbol
+  const symbol = `${token0Symbol}-${token1Symbol}`;
+  // TODO: Determine mint threshold. Need to calculate something based off of the pair's liquidity
+  liquigenFactory.createPair(name, symbol, traitCID, description, liquigenWallet, pair, mintThreshold);
 }
 
 async function processDeposit() {
