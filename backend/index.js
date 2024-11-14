@@ -2,7 +2,6 @@ import express from "express";
 import { ethers } from "ethers";
 import { config } from "dotenv";
 import kimFactoryABI from "../smart-contracts/artifacts/contracts/LPNFTFactory.sol/KimLPNFTFactory.json" with { type: "json" };
-import lp404PairABI from "../smart-contracts/artifacts/contracts/extensions/LP404.sol/LP404.json" with { type: "json" };
 // TODO: Import the LiquigenPair contract ABI here
 
 // Load .env file
@@ -21,11 +20,11 @@ app.get("/", (req, res) => {
 const provider = new ethers.JsonRpcProvider();
 
 // TODO: Create a new instance of the LiquigenPair contract
-// const liquigenFactoryContract = new ethers.Contract(
-//   process.env.LPNFTFACTORY_CONTRACT_ADDRESS,
-//   kimFactoryABI.abi,
-//   provider,
-// );
+const liquigenFactoryContract = new ethers.Contract(
+  process.env.LPNFTFACTORY_CONTRACT_ADDRESS,
+  kimFactoryABI.abi,
+  provider,
+);
 
 // Create a new instance of the Kim Factory
 const kimFactoryContract = new ethers.Contract(
@@ -38,18 +37,6 @@ const kimFactoryContract = new ethers.Contract(
 // Listen for Create Pair event
 kimFactoryContract.on("PairCreated", async (t0, t1, pair, lp404, len) => {
   console.log("PairCreated: ", t0, t1, pair, lp404, len);
-  const lp404PairContract = new ethers.Contract(
-    lp404,
-    lp404PairABI.abi,
-    provider,
-  );
-  const name = await lp404PairContract.name();
-  const symbol = await lp404PairContract.symbol();
-  const traitCID = await lp404PairContract.traitCID();
-  const description = await lp404PairContract.description();
-  const owner = await lp404PairContract.owner();
-  console.log("Pair details: ", name, symbol, traitCID, description, owner);
-
   // TODO: Create a new LiquigenPair contract
   // const liquigenPairData = await liquigenFactoryContract.createPair(
   //   name,
