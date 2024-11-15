@@ -9,12 +9,12 @@ const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 module.exports = {
   networks: {
     modeMainnet: {
-      url: "https://mainnet.mode.network/",
+      url: process.env.MAINNET_RPC,
       chainId: 34443,
       accounts: [PRIVATE_KEY],
     },
     modeSepolia: {
-      url: "https://sepolia.mode.network",
+      url: process.env.TESTNET_RPC,
       chainId: 919,
       accounts: [PRIVATE_KEY],
     },
