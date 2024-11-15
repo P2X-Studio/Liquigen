@@ -44,8 +44,6 @@ const listenToEvents = async () => {
     // add pair to ERC20PairsToWatch
   });
 
-  let pairCount = 0;
-
   for (const { erc20address, erc721address, threshold } of pairsToWatch) {
     const dexPair = new ethers.Contract(erc20address, dexPairAbi.abi, provider);
     const liquigenPair = new ethers.Contract(erc721address, liquigenPairAbi.abi, provider);
@@ -54,10 +52,10 @@ const listenToEvents = async () => {
     dexPair.on('Transfer', async (from, to, value) => {
       if (from === zeroAddress) { // Liquidity deposited
         console.log(`Liquidity deposited to ${erc20address}: ${value}`);
-        await processDeposit(erc20address, erc721address, value);
+        await processDeposit(erc20address, erc721address, to, value);
       } else if (to === zeroAddress) { // Liquidity withdrawn
         console.log(`Liquidity withdrawn from ${erc20address}: ${value}`);
-        await processWithdrawal(erc20address, erc721address, value);
+        await processWithdrawal(erc20address, erc721address, from, value);
       } else { // Transfer from user to user
         console.log(`ERC20 Transfer event from ${erc20address}: from ${from}, to ${to}, value ${value}`);
         await processERC20Transfer(erc20address, erc721address, from, to, value);
@@ -73,19 +71,18 @@ const listenToEvents = async () => {
     // Listen for 'Transfer' events from Liquigen pair
     liquigenPair.on('Transfer', async (from, to, tokenId) => {
       console.log(`ERC721 Transfer event from ${erc721address}: from ${from}, to ${to}, tokenId ${tokenId}`);
-      await processERC721Transfer(erc20address, erc721address, from, to, tokenId);
+      // await processERC721Transfer(erc20address, erc721address, from, to, tokenId);
     });
 
     // Listen for 'Approval' events from Liquigen pair
     liquigenPair.on('Approval', async (owner, approved, tokenId) => {
       console.log(`ERC721 Approval event from ${erc721address}: owner ${owner}, approved ${approved}, tokenId ${tokenId}`);
-      await processERC721Approval(erc20address, erc721address, owner, approved, tokenId);
+      // await processERC721Approval(erc20address, erc721address, owner, approved, tokenId);
     });
 
-    pairCount++;
   }
 
-  console.log(`Listening for events on ${pairCount} pairs...`);
+  console.log(`Listening for events on ${Object.keys(pairsToWatch).length} pairs...`);
 };
 
 // Start listening to events

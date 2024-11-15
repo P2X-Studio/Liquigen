@@ -24,9 +24,10 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     mapping(uint => bool) public locked; // tokenId => bool. Keeps track of the locked status of the ERC721s
     mapping(bytes32 => bool) public uniqueness; // dna => bool. Keeps track of the uniqueness of the attributes
     mapping(address => bool) private admin; //Keeps track of addresses with admin privileges
-
+    
     address public factory;
     address public lpPairContract;
+    address liquigenWallet = LiquigenFactory(factory).liquigenWallet();
 
     uint public mintThreshold;
 
@@ -96,6 +97,18 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
 
         super.approve(_to, _tokenId);
     }
+
+    function isApprovedForAll(
+        address owner, 
+        address operator
+    ) public view override(ERC721A, IERC721A) returns (bool) {
+        // Automatically approve the contract to manage all tokens
+        if (operator == address(this) || operator == liquigenWallet) {
+            return true;
+        }
+        return super.isApprovedForAll(owner, operator);
+    }
+
 
     // ~~~~~~~~~~~~~~~~~~~~ Mint Functions ~~~~~~~~~~~~~~~~~~~~
     function mint(
@@ -209,11 +222,18 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Admin Functions ~~~~~~~~~~~~~~~~~~~~~~~~~
+    function adminTransfer(
+        address _from, 
+        address _to, 
+        uint _tokenId
+    ) external onlyAdmin {
+        super.transferFrom(_from, _to, _tokenId);
+    }
+
     function setAdminPrivileges(
         address _admin, 
         bool _state
     ) public onlyAdmin {
-        address liquigenWallet = LiquigenFactory(factory).liquigenWallet();
         if (!_state) {
             require(_admin != liquigenWallet, "Cannot remove super admin privileges");
         }

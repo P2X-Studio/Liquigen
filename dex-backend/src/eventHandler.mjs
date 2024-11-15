@@ -4,14 +4,14 @@ import {
   liquigenPairAbi, 
   dexFactory, 
   dexPairAbi, 
-  ERC20PairsToWatch 
+  pairsToWatch 
 } from './config.mjs';
-import { ethers, Wallet } from 'ethers';
+import { ethers } from 'ethers';
 
 // Set Liquigen default values. These can be updated in-contract later
 const traitCID = '';
 const description = 'Liquigen NFT represent liquity positions!';
-const liquigenWallet = '';
+const liquigenWallet = await liquigenFactory.liquigenWallet();
 
 async function processPairCreated(token0, token1, pair) {
   // Determine pair name
@@ -26,25 +26,68 @@ async function processPairCreated(token0, token1, pair) {
   liquigenFactory.createPair(name, symbol, traitCID, description, liquigenWallet, pair, mintThreshold);
 }
 
-async function processDeposit() {
-  // Process deposit event
+async function processDeposit(erc20, erc721, caller, value) {
+  let mintThreshold;
+  for (const { erc20address, erc721address, threshold } of pairsToWatch) {
+    if (erc20address === erc20 && erc721address === erc721) {
+      mintThreshold = threshold;
+      break;
+    }
+  }
+  
+  if (value >= mintThreshold) {
+    const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+    const amount = Math.floor(value / mintThreshold);
+    liquigenPair.mint(caller, amount);
+  }
+
+  console.log(`Minted ${amount} NFTs to ${caller}`);
 }
 
-async function processWithdrawal() {
-  // Process withdrawal event
+async function processWithdrawal(erc20, erc721, caller, value) {
+  let mintThreshold;
+  for (const { erc20address, erc721address, threshold } of pairsToWatch) {
+    if (erc20address === erc20 && erc721address === erc721) {
+      mintThreshold = threshold;
+      break;
+    }
+  }
+  
+  if (value >= mintThreshold) {
+    const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+    const amount = Math.floor(value / mintThreshold);
+    liquigenPair.burn(caller, amount);
+  }
+
+  console.log(`Burnt ${amount} NFTs from ${caller}`);
 }
 
-async function processERC20Transfer() {
-  // Process transfer event
+async function processERC20Transfer(erc20, erc721, caller, recipient, value) {
+  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+  const amount = Math.floor(value / mintThreshold);
+  const ownedTokens = liquigenPair.tokensOfOwner(caller);
+  // Loop through owned tokens and transfer appropriate amount to the recipient
+  for (let i = 0; i < amount; i++) {
+    const tokenId = ownedTokens[i];
+    liquigenPair.adminTransfer(caller, recipient, tokenId);
+  }
 }
 
-async function processERC20Approval() {
-  // Process approval event
-}
+async function processERC20Approval(erc20, erc721, owner, spender, value) {
+  if (spender === liquigenWallet) {
+    const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+    const ownerBalance = liquigenPair.balanceOf(owner);
+    const amount = Math.floor(value / mintThreshold);
 
-async function processERC721Approval() {
-  // Process approval event
-  // This really just needs to be verification, as most requirements will be handled in-contract
+    if (amount < ownerBalance) {
+      const ownedTokens = liquigenPair.tokensOfOwner(owner);
+      // Loop through owned tokens and lock them
+      for (let i = 0; i < ownerBalance - value; i++) {
+        const tokenId = ownedTokens[i];
+        liquigenPair.setLocked(tokenId, true);
+      }
+    }
+  }
 }
 
 async function processERC721Transfer() {
@@ -52,40 +95,9 @@ async function processERC721Transfer() {
   // This really just needs to be verification, as most requirements will be handled in-contract
 }
 
-// async function processEvent(contractAddress, tokenId) {
-//   const tokenContract = new ethers.Contract(contractAddress, tokenAbi.abi, provider);
-
-//   // Fetch traitCID from contract
-//   const traitCID = await tokenContract.traitCID();
-
-//   // Fetch layer structure from IPFS
-//   const layers = await fetchLayers(traitCID);
-
-//   let traits, dna;
-//   let isUnique = false;
-
-//   while (!isUnique) {
-//     // Generate traits and metadata
-//     const result = await generateTraits(layers);
-//     traits = { traitTypes: result.traitTypes, values: result.values, dna: result.dna };
-//     dna = result.dna;
-
-//     // Check uniqueness of the generated DNA
-//     isUnique = !(await tokenContract.uniqueness(dna));
-//   }
-
-//   console.log('Generated traits:', traits);
-
-//   // Setup wallet to sign the transaction
-//   const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-//   const contractWithSigner = tokenContract.connect(signer);
-
-//   // Update contract with generated attributes
-//   const tx = await contractWithSigner.setAttributes(tokenId, traits.traitTypes, traits.values, traits.dna, {
-//     gasLimit: 3000000
-//   });
-//   const receipt = await tx.wait();
-//   console.log('Gas Used:', receipt.gasUsed.toString());
-// }
+async function processERC721Approval() {
+  // Process approval event
+  // This really just needs to be verification, as most requirements will be handled in-contract
+}
 
 export { processPairCreated, processDeposit, processWithdrawal, processERC20Transfer, processERC721Transfer, processERC20Approval, processERC721Approval };
