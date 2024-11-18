@@ -41,10 +41,10 @@ const listenToEvents = async () => {
   dexFactory.on('PairCreated', async (token0, token1, pair, event) => {
     console.log(`Pair created: ${pair}`);
     await processPairCreated(token0, token1, pair);
-    // add pair to ERC20PairsToWatch
+    // TODO: add pair to ERC20PairsToWatch
   });
 
-  for (const { erc20address, erc721address, threshold } of pairsToWatch) {
+  for (const { erc20address, erc721address } of pairsToWatch) {
     const dexPair = new ethers.Contract(erc20address, dexPairAbi.abi, provider);
     const liquigenPair = new ethers.Contract(erc721address, liquigenPairAbi.abi, provider);
 
