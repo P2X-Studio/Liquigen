@@ -18,6 +18,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         string[] traitTypes;
         string[] values;
         bytes32 dna;
+        uint lpValueAtMint;
     }
 
     mapping(uint => Attributes) public attributes; // tokenId => Attributes of the ERC721s
@@ -30,7 +31,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     address public lpPairContract;
     address public liquigenWallet;
 
-    uint public mintThreshold;
+    uint public mintThreshold = 0;
 
     bool internal initialized = false;
 
@@ -42,10 +43,8 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         string memory _name,
         string memory _symbol,
         string memory _traitCID,
-        string memory _description,
-        address _initialOwner
+        string memory _description
     ) ERC721A(_name, _symbol) Ownable() {
-        admin[_initialOwner] = true;
         traitCID = _traitCID;
         description = _description;
         tokenName = _name;
@@ -113,28 +112,30 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
 
     // ~~~~~~~~~~~~~~~~~~~~ Mint Functions ~~~~~~~~~~~~~~~~~~~~
     function mint(
-        address _to, 
-        uint _mintAmount
+        address _to,
+        uint rarityModifier
     ) external onlyAdmin {
         require(IERC20(lpPairContract).balanceOf(_to) >= mintThreshold, "Insufficient LP token balance!");
 
-        _safeMint(_to, _mintAmount);
+        uint tokenId = _nextTokenId();
+        _safeMint(_to, 1);
+        LiquigenFactory(factory).generateMetadata(tokenId, _to, address(this), rarityModifier);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Setters ~~~~~~~~~~~~~~~~~~~~~~~~~
     function initialize(
         address _factory, 
-        address _pair, 
-        uint _mintThreshold
+        address _pair
     ) external {
         require(!initialized, "This contract has already been initialized");
         require(_factory != address(0), "Invalid factory address");
         initialized = true;
         factory = _factory;
-        admin[_factory] = true;
         lpPairContract = _pair;
-        mintThreshold = _mintThreshold;
         liquigenWallet = LiquigenFactory(_factory).liquigenWallet();
+
+        admin[factory] = true;
+        admin[liquigenWallet] = true;
     }
 
     function setCollectionInfo(
@@ -172,6 +173,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         }
 
         newAttr.dna = _dna;
+        newAttr.lpValueAtMint = mintThreshold;
         uniqueness[_dna] = true;
     }
 
@@ -188,14 +190,23 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         mintThreshold = _mintThreshold;
     }
 
+    function burnNFT(
+        uint _tokenId
+    ) public {
+        uniqueness[attributes[_tokenId].dna] = false;
+
+        _burn(_tokenId);
+    }
+
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Getters ~~~~~~~~~~~~~~~~~~~~~~~~~
     function getTokenAttributes(
-        uint tokenId
-    ) external view returns (string[] memory, string[] memory, bytes32) {
+        uint _tokenId
+    ) external view returns (string[] memory, string[] memory, bytes32, uint) {
         return (
-            attributes[tokenId].traitTypes,
-            attributes[tokenId].values,
-            attributes[tokenId].dna
+            attributes[_tokenId].traitTypes,
+            attributes[_tokenId].values,
+            attributes[_tokenId].dna,
+            attributes[_tokenId].lpValueAtMint
         );
     }
 
@@ -219,6 +230,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
 
         string memory uri = LiquigenFactory(factory).getURI();
 
+        // TODO: add lpValueAtMint to metadata
         return
             MetadataLibrary.buildTokenURI(
                 _id,
@@ -228,6 +240,25 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
                 address(this),
                 attrs
             );
+    }
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~ User Functions ~~~~~~~~~~~~~~~~~~~~~~~~~
+    function mergeNFTs(uint[] calldata tokenIds) public {
+        uint balance = tokenIds.length;
+        // Ensure ownership of all tokens
+        for (uint i = 0; i < tokenIds.length; i++) {
+            require(ownerOf(tokenIds[i]) == msg.sender, "Only owned NFT can be merged");
+        }
+
+        // Burn old tokens
+        for (uint i = 0; i < tokenIds.length; i++) {
+            burnNFT(tokenIds[i]);
+        }
+
+        // Mint new token and generate metadata
+        uint tokenId = _nextTokenId();
+        _safeMint(msg.sender, 1);
+        LiquigenFactory(factory).generateMetadata(tokenId, msg.sender, address(this), balance);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Admin Functions ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -244,7 +275,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         bool _state
     ) public onlyAdmin {
         if (!_state) {
-            require(_admin != liquigenWallet, "Cannot remove super admin privileges");
+            require(_admin != liquigenWallet && _admin != factory, "Cannot remove super admin privileges");
         }
         admin[_admin] = _state;
     }

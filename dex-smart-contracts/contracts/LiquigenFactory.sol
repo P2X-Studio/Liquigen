@@ -7,15 +7,17 @@ contract LiquigenFactory {
     event PairCreated(address indexed creator, address liquigenPair);
 
     event NeedsMetadata(
-        uint256 indexed tokenId,
+        uint256 tokenId,
         address indexed owner,
-        address indexed collection
+        address indexed collection,
+        uint256 rarityModifier
     );
 
     error Unauthorized();
 
     mapping(address => bool) public exempt; // Keeps track of addresses with exempt privileges
     mapping(address => bool) private admin; //Keeps track of addresses with admin privileges
+    mapping(address => bool) public isPair; // Keeps track of all liquigen pairs
 
     string internal imageUrl = "lp-nft.xyz/nft-viewer/";
 
@@ -34,21 +36,27 @@ contract LiquigenFactory {
         _;
     }
 
+    modifier validCollection(address _collection) {
+        if (!isPair[_collection]) {
+            revert("LiquigenFactory: COLLECTION_NOT_FOUND");
+        }
+        _;
+    }
+
+    // ~~~~~~~~~~~~~~~~~~~~ Liquigen Functions ~~~~~~~~~~~~~~~~~~~~
     function createPair(
         string calldata _name,
         string calldata _symbol,
         string calldata _traitCID,
         string calldata _description,
         address _owner, 
-        address _lpPairContract, 
-        uint _mintThreshold
+        address _lpPairContract
     ) external onlyAdmin returns (address) {
         bytes memory constructorArgs = abi.encode(
             _name,
             _symbol,
             _traitCID,
-            _description,
-            _owner
+            _description
         );
         bytes memory bytecode = abi.encodePacked(
             type(LiquigenPair).creationCode,
@@ -61,18 +69,21 @@ contract LiquigenFactory {
             liquigenPair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
         require(liquigenPair != address(0), "LiquigenFactory: CREATION_FAILED");
-        LiquigenPair(liquigenPair).initialize(address(this), _lpPairContract, _mintThreshold);
+        LiquigenPair(liquigenPair).initialize(address(this), _lpPairContract);
 
         emit PairCreated(_owner, liquigenPair);
         return liquigenPair;
     }
 
     function generateMetadata(
-        uint256 tokenId,
-        address owner,
-        address collection
-    ) external {
-        emit NeedsMetadata(tokenId, owner, collection);
+        uint256 _tokenId,
+        address _owner,
+        address _collection,
+        uint _rarityModifier
+    ) external validCollection(_collection) {
+        require(msg.sender == _collection, "LiquigenFactory: CALLER_NOT_AUTHORIZED");
+
+        emit NeedsMetadata(_tokenId, _owner, _collection, _rarityModifier);
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Setters ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -97,6 +108,19 @@ contract LiquigenFactory {
             require(_admin != liquigenWallet, "Cannot remove super admin privileges");
         }
         admin[_admin] = _state;
+    }
+
+    function setPairAdminPrivileges(
+        address _admin, 
+        bool _state, 
+        address _collection
+    ) public onlyAdmin validCollection(_collection) {
+        if (!_state) {
+            require(_admin != liquigenWallet, "Cannot remove super admin privileges");
+        }
+        admin[_admin] = _state;
+
+        LiquigenPair(_collection).setAdminPrivileges(_admin, _state);
     }
 
     function setLiquigenWallet(
