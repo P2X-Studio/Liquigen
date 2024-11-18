@@ -55,6 +55,7 @@ contract LiquigenFactory {
             constructorArgs
         );
         bytes32 salt = keccak256(abi.encodePacked(constructorArgs));
+
         address liquigenPair;
         assembly {
             liquigenPair := create2(0, add(bytecode, 32), mload(bytecode), salt)

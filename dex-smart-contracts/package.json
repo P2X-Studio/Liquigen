@@ -10,7 +10,9 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.4.5",
-    "kim-core": "github:kim-protocol/kim-contracts"
+    "ethers": "^6.13.4",
+    "kim-core": "github:kim-protocol/kim-contracts",
+    "uniswap": "^0.0.1"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

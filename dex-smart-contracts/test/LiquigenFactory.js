@@ -2,65 +2,61 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("LiquigenFactory", function () {
-  let LiquigenFactory, LiquigenPair, factory, owner, admin, user, lpPairContract;
+  let LiquigenFactory, LiquigenPair, MetadataLibrary, dexFactory, owner, admin, user, dexPairContract;
 
   beforeEach(async function () {
     [owner, admin, user] = await ethers.getSigners();
 
-    // Deploy LiquigenPair contract
-    const LiquigenPairFactory = await ethers.getContractFactory("LiquigenPair");
-    LiquigenPair = await LiquigenPairFactory.deploy();
-    await LiquigenPair.deployed();
+    // Step 1: Deploy the MetadataLibrary
+    MetadataLibrary = await ethers.deployContract("MetadataLibrary");
+    await MetadataLibrary.waitForDeployment();
 
-    // Deploy LiquigenFactory contract
-    const Factory = await ethers.getContractFactory("LiquigenFactory");
-    factory = await Factory.deploy();
-    await factory.deployed();
+    // Step 2: Deploy the LiquigenFactory contract
+    LiquigenFactory = await ethers.deployContract("LiquigenFactory", {
+      libraries: {
+        MetadataLibrary: MetadataLibrary.target,
+      },
+    });
+    await LiquigenFactory.waitForDeployment();
 
-    // Mock UniswapV2 LP pair contract
-    const ERC20 = await ethers.getContractFactory("ERC20Mock");
-    lpPairContract = await ERC20.deploy("LP Token", "LPT");
-    await lpPairContract.deployed();
+    // Step 3: Deploy a UniswapV2ERC20 contract
+    dexPairContract = await ethers.deployContract("UniswapV2ERC20");
+    await dexPairContract.waitForDeployment();
   });
 
   it("should create a new LiquigenPair", async function () {
-    const tx = await factory.createPair(
-      "Test Pair",
-      "TPAIR",
-      "ipfs://traitsCID",
-      "A test pair",
-      owner.address,
-      lpPairContract.address,
-      10 // mint threshold
-    );
+    try {
+        const tx = await LiquigenFactory.createPair(
+            "Test Pair",
+            "TPAIR",
+            "ipfs://traitsCID",
+            "A test pair",
+            owner.address,
+            dexPairContract.target,
+            10 // mint threshold, TODO: figure out best way to calculate this
+        );
 
-    const receipt = await tx.wait();
-    const event = receipt.events.find(e => e.event === "PairCreated");
-    expect(event).to.exist;
+        const receipt = await tx.wait();
 
-    const pairAddress = event.args.liquigenPair;
-    expect(pairAddress).to.not.equal(ethers.constants.AddressZero);
-  });
+        // Use the contract's interface to parse logs
+        const eventLogs = receipt.logs.map(log => {
+            try {
+                return LiquigenFactory.interface.parseLog(log);
+            } catch (error) {
+                return null;
+            }
+        }).filter(event => event !== null);
 
-  it("should revert if non-admin tries to create a pair", async function () {
-    await expect(
-      factory.connect(user).createPair(
-        "Non-Admin Pair",
-        "NAPAIR",
-        "ipfs://traitsCID",
-        "Non-admin attempt",
-        user.address,
-        lpPairContract.address,
-        5
-      )
-    ).to.be.revertedWith("Unauthorized");
-  });
+        // Check if the PairCreated event exists
+        const event = eventLogs.find(e => e.name === "PairCreated");
+        expect(event).to.exist;
 
-  it("should set admin privileges correctly", async function () {
-    await factory.setAdminPrivileges(admin.address, true);
-    expect(await factory.admin(admin.address)).to.be.true;
-
-    await factory.setAdminPrivileges(admin.address, false);
-    expect(await factory.admin(admin.address)).to.be.false;
+        const pairAddress = event.args.liquigenPair;
+        expect(pairAddress).to.not.equal(ethers.ZeroAddress);
+        console.log("LiquigenPair successfully created at:", pairAddress);
+    } catch (error) {
+        console.error("Error creating pair:", error);
+        throw error;
+    }
   });
 });

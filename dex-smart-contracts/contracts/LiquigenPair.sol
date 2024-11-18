@@ -24,10 +24,11 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     mapping(uint => bool) public locked; // tokenId => bool. Keeps track of the locked status of the ERC721s
     mapping(bytes32 => bool) public uniqueness; // dna => bool. Keeps track of the uniqueness of the attributes
     mapping(address => bool) private admin; //Keeps track of addresses with admin privileges
+    mapping(address => uint) public balances; // Keeps track of the LP token balances of the addresses
     
     address public factory;
     address public lpPairContract;
-    address liquigenWallet = LiquigenFactory(factory).liquigenWallet();
+    address public liquigenWallet;
 
     uint public mintThreshold;
 
@@ -127,11 +128,13 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         uint _mintThreshold
     ) external {
         require(!initialized, "This contract has already been initialized");
+        require(_factory != address(0), "Invalid factory address");
         initialized = true;
         factory = _factory;
         admin[_factory] = true;
         lpPairContract = _pair;
         mintThreshold = _mintThreshold;
+        liquigenWallet = LiquigenFactory(_factory).liquigenWallet();
     }
 
     function setCollectionInfo(
@@ -177,6 +180,12 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         bool _state
     ) external onlyAdmin {
         locked[_tokenId] = _state;
+    }
+
+    function setMintThreshold(
+        uint _mintThreshold
+    ) external onlyAdmin {
+        mintThreshold = _mintThreshold;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Getters ~~~~~~~~~~~~~~~~~~~~~~~~~
