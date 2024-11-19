@@ -35,6 +35,8 @@ factoryContract.on('NeedsMetadata', async (tokenId, owner, contractAddress) => {
     contractAddress
   };
   broadcast(JSON.stringify(message));
+
+  // call AI generator
 });
 
 app.listen(port, () => {

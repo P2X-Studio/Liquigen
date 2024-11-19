@@ -24,6 +24,7 @@ async function processPairCreated(token0, token1, pair) {
   const symbol = `${token0Symbol}-${token1Symbol}`;
   // Determine mint threshold
   liquigenFactory.createPair(name, symbol, traitCID, description, liquigenWallet, pair);
+  // TODO: add to pairs.json
 }
 
 async function processDeposit(erc20, erc721, caller, value) {
