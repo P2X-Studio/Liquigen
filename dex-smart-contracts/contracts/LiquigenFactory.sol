@@ -13,13 +13,11 @@ contract LiquigenFactory {
         uint256 rarityModifier
     );
 
-    error Unauthorized();
-
     mapping(address => bool) public exempt; // Keeps track of addresses with exempt privileges
-    mapping(address => bool) private admin; //Keeps track of addresses with admin privileges
+    mapping(address => bool) public admin; //Keeps track of addresses with admin privileges
     mapping(address => bool) public isPair; // Keeps track of all liquigen pairs
 
-    string internal imageUrl = "lp-nft.xyz/nft-viewer/";
+    string public imageUrl = "lp-nft.xyz/nft-viewer/";
 
     address public liquigenWallet;
 
@@ -31,7 +29,7 @@ contract LiquigenFactory {
     // ~~~~~~~~~~~~~~~~~~~~ Modifiers ~~~~~~~~~~~~~~~~~~~~
     modifier onlyAdmin() {
         if (!admin[msg.sender]) {
-            revert Unauthorized();
+            revert("LiquigenFactory: UNAUTHORIZED");
         }
         _;
     }
@@ -49,7 +47,6 @@ contract LiquigenFactory {
         string calldata _symbol,
         string calldata _traitCID,
         string calldata _description,
-        address _owner, 
         address _lpPairContract
     ) external onlyAdmin returns (address) {
         bytes memory constructorArgs = abi.encode(
@@ -71,7 +68,7 @@ contract LiquigenFactory {
         require(liquigenPair != address(0), "LiquigenFactory: CREATION_FAILED");
         LiquigenPair(liquigenPair).initialize(address(this), _lpPairContract);
 
-        emit PairCreated(_owner, liquigenPair);
+        emit PairCreated(msg.sender, liquigenPair);
         return liquigenPair;
     }
 
