@@ -15,11 +15,11 @@ describe("LiquigenFactory", function () {
   beforeEach(async function () {
     [owner, admin, user] = await ethers.getSigners();
 
-    // Step 1: Deploy the MetadataLibrary
+    // Deploy the MetadataLibrary
     MetadataLibrary = await ethers.deployContract("MetadataLibrary");
     await MetadataLibrary.waitForDeployment();
 
-    // Step 2: Deploy the LiquigenFactory contract
+    // Deploy the LiquigenFactory contract
     LiquigenFactory = await ethers.deployContract("LiquigenFactory", {
       libraries: {
         MetadataLibrary: MetadataLibrary.target,
@@ -27,7 +27,7 @@ describe("LiquigenFactory", function () {
     });
     await LiquigenFactory.waitForDeployment();
 
-    // Step 3: Deploy a UniswapV2ERC20 contract
+    // Deploy a UniswapV2ERC20 contract
     dexPairContract = await ethers.deployContract("UniswapV2ERC20");
     await dexPairContract.waitForDeployment();
 
@@ -170,7 +170,96 @@ describe("LiquigenFactory", function () {
     }
   });
 
-  // TODO: setPairAdminPrivileges test
+  it("should add and remove admin addresses for specified pair when valid", async function () {
+    try {
+    // Create a new LiquigenPair from the LiquigenFactory
+    const LiquigenPairContract = await ethers.getContractFactory("LiquigenPair", {
+      libraries: {
+        MetadataLibrary: MetadataLibrary.target,
+      },
+    });
+
+    const tx = await LiquigenFactory.createPair(
+      "Test Pair",
+      "TPAIR",
+      "ipfs://traitsCID",
+      "A test description",
+      dexPairContract.target
+    );
+    const receipt = await tx.wait();
+
+    // Check PairCreated event and create new contract instance
+    const liquigenLogs = receipt.logs.map(log => {
+      try {
+          return LiquigenFactory.interface.parseLog(log);
+      } catch (error) {
+          return null;
+      }
+    }).filter(event => event !== null);
+
+    const liquigenEvent = liquigenLogs.find(e => e.name === "PairCreated");
+    const liquigenPairAddress = liquigenEvent.args.liquigenPair;
+    LiquigenPair = new ethers.Contract(liquigenPairAddress, LiquigenPairContract.interface, owner);
+
+    // Verify addresses are not admin by default
+    expect(await LiquigenFactory.admin(user.address)).to.equal(false);
+
+    // Verify adding to admin
+    await LiquigenFactory.setPairAdminPrivileges(
+      user.address,
+      true,
+      liquigenPairAddress
+    );
+    expect(await LiquigenPair.admin(user.address)).to.equal(true);
+
+    // Verify removing from admin
+    await LiquigenFactory.setPairAdminPrivileges(
+      user.address,
+      false,
+      liquigenPairAddress
+    );
+    expect(await LiquigenPair.admin(user.address)).to.equal(false);
+
+      console.log(`admin addresses added and removed as expected on specified pair when valid`);
+    } catch (error) {
+      console.log("Error calling setAdminPrivileges:", error);
+      throw error;
+    }
+  });
+
+  it("should not allow non-admin to set admin priviliges for specified pair", async function () {
+    try {
+      // Verify only admins can call this function
+      await expect(LiquigenFactory.connect(user).setPairAdminPrivileges(
+        user.address,
+        true,
+        dexPairContract.target
+      )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
+
+      console.log(`setPairAdminPrivileges does not allow non-admin to set admin priviliges for specified pair`);
+    } catch (error) {
+      console.log("Error calling setAdminPrivileges:", error);
+      throw error;
+    }
+  });
+
+  it("should not add and remove admin addresses for specified pair when invalid", async function () {
+    try {
+      const nonLiquigenPairAddress = dexPairContract.target;
+
+      // Verify only admins can call this function
+      await expect(LiquigenFactory.connect(admin).setPairAdminPrivileges(
+        user.address,
+        true,
+        nonLiquigenPairAddress
+      )).to.be.revertedWith("LiquigenFactory: COLLECTION_NOT_FOUND");
+
+      console.log(`setPairAdminPrivileges reverted as expected when callid for invalid pair`);
+    } catch (error) {
+      console.log("Error calling setAdminPrivileges:", error);
+      throw error;
+    }
+  });
 
   it("should change liquigenWallet when called from Liquigen wallet", async function () {
     try {

@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 const { sha1 } = require("sha1");
 const dexFactoryContract = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const dexPairContract = require("@uniswap/v2-core/build/UniswapV2Pair.json");
-const ERC20Contract = require("@openzeppelin/contracts/build/contracts/ERC20.json");
+const ERC20Contract = require("@openzeppelin/contracts/build/contracts/ERC20PresetMinterPauser.json");
 
 describe("LiquigenPair", function () {
   let ERC20token0, ERC20token1, DexFactory, DexPair, MetadataLibrary, LiquigenFactory, LiquigenPair;
@@ -20,6 +20,14 @@ describe("LiquigenPair", function () {
 
     ERC20token1 = await ERC20.deploy("Token1", "T1");
     await ERC20token1.waitForDeployment();
+
+    // Mint some ERC20 tokens to owner
+    await ERC20token0.mint(owner.address, 100000);
+    await ERC20token1.mint(owner.address, 100000);
+
+    // Mint some ERC20 tokens to user1
+    await ERC20token0.mint(user1.address, 50000);
+    await ERC20token1.mint(user1.address, 50000);
 
     // Deploy the UniswapV2Factory
     const UniswapV2Factory = await ethers.getContractFactory(dexFactoryContract.abi, dexFactoryContract.bytecode);
@@ -46,6 +54,22 @@ describe("LiquigenPair", function () {
     const dexEvent = dexLogs.find(e => e.name === "PairCreated");
     const dexPairAddress = dexEvent.args.pair;
     DexPair = new ethers.Contract(dexPairAddress, dexPairContract.abi, owner);
+
+    // Add initial liquidity to the pair from owner
+    await ERC20token0.connect(owner).approve(DexPair.target, 50000);
+    await ERC20token1.connect(owner).approve(DexPair.target, 50000);
+
+    await ERC20token0.connect(owner).transfer(DexPair.target, 50000);
+    await ERC20token1.connect(owner).transfer(DexPair.target, 50000);
+    await DexPair.mint(owner.address);
+
+    // Add liquidity to the pair from user1
+    await ERC20token0.connect(user1).approve(DexPair.target, 10000);
+    await ERC20token1.connect(user1).approve(DexPair.target, 10000);
+
+    await ERC20token0.connect(user1).transfer(DexPair.target, 10000);
+    await ERC20token1.connect(user1).transfer(DexPair.target, 10000);
+    await DexPair.mint(user1.address);
 
     // Deploy the MetadataLibrary
     MetadataLibrary = await ethers.deployContract("MetadataLibrary");
@@ -263,7 +287,7 @@ describe("LiquigenPair", function () {
       expect(token[0]).to.deep.equal(['trait1', 'trait2', 'trait3']);
       expect(token[1]).to.deep.equal(["value1", "value2", "value3"]);
       expect(token[2]).to.equal('0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000');
-      expect(token[3]).to.equal(0);
+      expect(token[3]).to.equal(1000);
 
       console.log(`set attributes for token as expected`);
     } catch (error) {
@@ -394,13 +418,13 @@ describe("LiquigenPair", function () {
 
   it("should set mint threshold when called from admin", async function () {
     try {
-      expect(await LiquigenPair.mintThreshold()).to.equal(0);
+      expect(await LiquigenPair.mintThreshold()).to.equal(1000);
 
       await LiquigenPair.setMintThreshold(
-        100
+        2000
       );
 
-      expect(await LiquigenPair.mintThreshold()).to.equal(100);
+      expect(await LiquigenPair.mintThreshold()).to.equal(2000);
 
       console.log(`set mint threshold as expected`);
     } catch (error) {
@@ -550,6 +574,73 @@ describe("LiquigenPair", function () {
       console.log(`mergeNFTs does not allow user to merge nfts they don't own`);
     } catch (error) {
       console.log("Error merging NFTs:", error);
+      throw error;
+    }
+  });
+
+  it("should transfer NFT & LP tokens", async function () {
+    try {
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      // Set approval for LP tokens
+      await DexPair.connect(user1).approve(LiquigenPair.target, 1000);
+
+      // Transfer NFT to user2
+      await LiquigenPair.connect(user1).transferFrom(
+        user1.address,
+        user2.address,
+        1
+      );
+
+      expect(await LiquigenPair.ownerOf(1)).to.equal(user2.address);
+      expect(await DexPair.balanceOf(user1.address)).to.equal(9000);
+      expect(await DexPair.balanceOf(user2.address)).to.equal(1000);
+      
+
+
+      console.log(`transferred NFT and 1000 LP tokens from user1 to user2 as expected`);
+    } catch (error) {
+      console.log("transferFrom error:", error);
+      throw error;
+    }
+  });
+
+  it("should not allow user to transfer NFT they don't own", async function () {
+    try {
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      // Attempt to transfer NFT to user2
+      await expect(LiquigenPair.connect(user2).transferFrom(
+        user1.address,
+        user2.address,
+        1
+      )).to.be.revertedWith("ERC721: transfer caller is not owner nor approved");
+
+      console.log(`transferFrom does not allow user to transfer NFT they don't own`);
+    } catch (error) {
+      console.log("transferFrom error:", error);
       throw error;
     }
   });
