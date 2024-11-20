@@ -2,7 +2,8 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("LiquigenFactory", function () {
-  let LiquigenFactory, LiquigenPair, MetadataLibrary, dexFactory, owner, admin, user, dexPairContract;
+  let MetadataLibrary, LiquigenFactory, dexPairContract;
+  let owner, admin, user;
 
   const addresses = [
     '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65',
@@ -64,6 +65,7 @@ describe("LiquigenFactory", function () {
 
         const pairAddress = event.args.liquigenPair;
         expect(pairAddress).to.not.equal(ethers.ZeroAddress);
+        
         console.log("LiquigenPair successfully created at:", pairAddress);
     } catch (error) {
         console.error("Error creating pair:", error);
@@ -71,53 +73,9 @@ describe("LiquigenFactory", function () {
     }
   });
 
-  // TODO: this needs to be called in the pair tests
-  // it("should emit NeedsMetadata event", async function () {
-  //   try {
-  //     const tx = await LiquigenFactory.generateMetadata(
-  //       3, 
-  //       wallets[0], 
-  //       wallets[1], 
-  //       2
-  //     )
-
-  //     const receipt = await tx.wait();
-
-  //     // Use the contract's interface to parse logs
-  //     const eventLogs = receipt.logs.map(log => {
-  //         try {
-  //             return LiquigenFactory.interface.parseLog(log);
-  //         } catch (error) {
-  //             return null;
-  //         }
-  //     }).filter(event => event !== null);
-
-  //     // Check if the NeedsMetadata event exists
-  //     const event = eventLogs.find(e => e.name === "NeedsMetadata");
-  //     expect(event).to.exist;
-
-  //     const tokenId = event.args.tokenId;
-  //     expect(tokenId).to.equal(3);
-      
-  //     const cOwner = event.args.owner;
-  //     expect(cOwner).to.equal(wallets[0]);
-
-  //     const collection = event.logs.collection;
-  //     expect(collection).to.equal(wallets[1]);
-
-  //     const rarityModifier = event.logs.rarityModifier;
-  //     expect(rarityModifier).to.equal(2);
-
-  //     console.log("NeedsMetadata event emitted as expected");
-  //   } catch (error) {
-  //     console.log("Error calling generateMetadata:", error);
-  //     throw error;
-  //   }
-  // });
-
   it("should set imageUrl to 'Test imageUrl'", async function () {
     try {
-      await LiquigenFactory.updateImageUrl(
+      await LiquigenFactory.setImageUrl(
         'Test imageUrl'
       )
 
@@ -134,14 +92,14 @@ describe("LiquigenFactory", function () {
   it("should add and remove exempt addresses", async function () {
     try {
       // Verify adding to exempt
-      await LiquigenFactory.setAdminPrivileges(
+      await LiquigenFactory.setExempt(
         addresses[0],
         true
       );
       expect(await LiquigenFactory.exempt(addresses[0])).to.equal(true);
 
       // Verify removing from exempt
-      await LiquigenFactory.setAdminPrivileges(
+      await LiquigenFactory.setExempt(
         addresses[0],
         false
       );
@@ -206,6 +164,42 @@ describe("LiquigenFactory", function () {
       )).to.be.revertedWith("Cannot remove super admin privileges");
 
       console.log(`setAdminPrivileges does not allow removing Liquigen wallet as admin`);
+    } catch (error) {
+      console.log("Error calling setAdminPrivileges:", error);
+      throw error;
+    }
+  });
+
+  // TODO: setPairAdminPrivileges test
+
+  it("should change liquigenWallet when called from Liquigen wallet", async function () {
+    try {
+      expect(await LiquigenFactory.liquigenWallet()).to.equal(owner.address);
+      
+      // Verify updating liquigenWallet
+      await LiquigenFactory.setLiquigenWallet(
+        admin.address
+      );
+
+      expect(await LiquigenFactory.liquigenWallet()).to.equal(admin.address);
+
+      console.log(`setLiquigenWallet updates as expected when called from liquigenWallet`);
+    } catch (error) {
+      console.log("Error calling setAdminPrivileges:", error);
+      throw error;
+    }
+  });
+
+  it("should not allow change to liquigenWallet when called from another address", async function () {
+    try {
+      expect(await LiquigenFactory.admin(admin.address)).to.equal(true);
+      
+      // Verify other addresses can't change liquigenWallet
+      await expect(LiquigenFactory.connect(admin).setLiquigenWallet(
+        admin.address
+      )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
+
+      console.log(`setLiquigenWallet does not allow changing liquigenWallet when called from another address`);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;

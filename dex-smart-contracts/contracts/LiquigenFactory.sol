@@ -68,6 +68,8 @@ contract LiquigenFactory {
         require(liquigenPair != address(0), "LiquigenFactory: CREATION_FAILED");
         LiquigenPair(liquigenPair).initialize(address(this), _lpPairContract);
 
+        isPair[liquigenPair] = true;
+
         emit PairCreated(msg.sender, liquigenPair);
         return liquigenPair;
     }
@@ -84,13 +86,13 @@ contract LiquigenFactory {
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Setters ~~~~~~~~~~~~~~~~~~~~~~~~~
-    function updateImageUrl(
+    function setImageUrl(
         string calldata _imageUrl
     ) external onlyAdmin {
         imageUrl = _imageUrl;
     }
 
-    function updateExempt(
+    function setExempt(
         address _address, 
         bool _exempt
     ) external onlyAdmin {

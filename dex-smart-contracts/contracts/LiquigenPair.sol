@@ -10,10 +10,6 @@ import "erc721a/contracts/extensions/ERC721AQueryable.sol";
 contract LiquigenPair is ERC721AQueryable, Ownable {
     using MetadataLibrary for MetadataLibrary.Attribute[];
 
-    error Unauthorized();
-    error LengthMisMatch();
-    error AlreadyExists();
-
     struct Attributes {
         string[] traitTypes;
         string[] values;
@@ -24,7 +20,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     mapping(uint => Attributes) public attributes; // tokenId => Attributes of the ERC721s
     mapping(uint => bool) public locked; // tokenId => bool. Keeps track of the locked status of the ERC721s
     mapping(bytes32 => bool) public uniqueness; // dna => bool. Keeps track of the uniqueness of the attributes
-    mapping(address => bool) private admin; //Keeps track of addresses with admin privileges
+    mapping(address => bool) public admin; //Keeps track of addresses with admin privileges
     mapping(address => uint) public balances; // Keeps track of the LP token balances of the addresses
     
     address public factory;
@@ -53,7 +49,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     // ~~~~~~~~~~~~~~~~~~~~ Modifiers ~~~~~~~~~~~~~~~~~~~~
     modifier onlyAdmin() {
         if (!admin[_msgSender()]) {
-            revert Unauthorized();
+            revert("LiquigenFactory: UNAUTHORIZED");
         }
         _;
     }
@@ -155,10 +151,10 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         bytes32 _dna
     ) external onlyAdmin {
         if (_values.length != _traitTypes.length) {
-            revert LengthMisMatch();
+            revert("LiquigenFactory: LENGTH_MISMATCH");
         }
         if (uniqueness[_dna]) {
-            revert AlreadyExists();
+            revert("LiquigenFactory: DNA_ALREADY_EXISTS");
         }
 
         Attributes storage newAttr = attributes[_tokenId];
