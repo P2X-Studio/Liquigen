@@ -137,8 +137,6 @@ describe("LiquigenPair", function () {
       expect(await LiquigenPair.liquigenWallet()).to.equal(owner.address);
       expect(await LiquigenPair.admin(LiquigenFactory.target)).to.equal(true);
       expect(await LiquigenPair.admin(owner.address)).to.equal(true);
-
-      console.log(`LiquigenPair initialized correctly`);
     } catch (error) {
       console.log("Error with initialization:", error);
       throw error;
@@ -163,8 +161,6 @@ describe("LiquigenPair", function () {
         false
       );
       expect(await LiquigenPair.admin(user1.address)).to.equal(false);
-
-      console.log(`admin addresses added and removed as expected`);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -177,9 +173,7 @@ describe("LiquigenPair", function () {
       await expect(LiquigenPair.connect(user1).setAdminPrivileges(
         user1.address,
         true
-      )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
-
-      console.log(`setAdminPrivileges does not allow non-admin to set admin priviliges`);
+      )).to.be.revertedWith("LiquigenPair: UNAUTHORIZED");
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -194,9 +188,7 @@ describe("LiquigenPair", function () {
       await expect(LiquigenPair.connect(admin).setAdminPrivileges(
         owner.address,
         false
-      )).to.be.revertedWith("Cannot remove super admin privileges");
-
-      console.log(`setAdminPrivileges does not allow removing Liquigen wallet as admin`);
+      )).to.be.revertedWith("LiquigenPair: UNAUTHORZED_SUPER_ADMIN");
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -225,8 +217,6 @@ describe("LiquigenPair", function () {
       expect(event.args.owner).to.equal(user1.address);
       expect(event.args.collection).to.equal(LiquigenPair.target);
       expect(event.args.rarityModifier).to.equal(1);
-
-      console.log(`minted token to user and emitted NeedsMetadata event`);
     } catch (error) {
       console.log("Error minting token:", error);
       throw error;
@@ -244,8 +234,6 @@ describe("LiquigenPair", function () {
       expect(await LiquigenPair.traitCID()).to.equal("ipfs://newTraitsCID");
       expect(await LiquigenPair.description()).to.equal("A new test description");
       expect(await LiquigenPair.tokenName()).to.equal("New Token Name");
-
-      console.log(`set collection info as expected`);
     } catch (error) {
       console.log("Error setting collection info:", error);
       throw error;
@@ -258,9 +246,7 @@ describe("LiquigenPair", function () {
         "ipfs://newTraitsCID",
         "A new test description",
         "New Token Name",
-      )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
-
-      console.log(`setCollectionInfo does not allow non-admin to set collection info`);
+      )).to.be.revertedWith("LiquigenPair: UNAUTHORIZED");
     } catch (error) {
       console.log("Error setting collection info:", error);
       throw error;
@@ -288,8 +274,6 @@ describe("LiquigenPair", function () {
       expect(token[1]).to.deep.equal(["value1", "value2", "value3"]);
       expect(token[2]).to.equal('0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000');
       expect(token[3]).to.equal(1000);
-
-      console.log(`set attributes for token as expected`);
     } catch (error) {
       console.log("Error setting attributes for token:", error);
       throw error;
@@ -321,9 +305,7 @@ describe("LiquigenPair", function () {
         ["trait1", "trait2", "trait3"],
         ["value1", "value2", "value3"],
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
-      )).to.be.revertedWith("LiquigenFactory: DNA_ALREADY_EXISTS");
-
-      console.log(`setAttributes reverts as expected when dna is not unique`);
+      )).to.be.revertedWith("LiquigenPair: DNA_ALREADY_EXISTS");
     } catch (error) {
       console.log("Error setting attributes for token:", error);
       throw error;
@@ -343,9 +325,7 @@ describe("LiquigenPair", function () {
         ["trait1", "trait2", "trait3"],
         ["value1", "value2"],
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
-      )).to.be.revertedWith("LiquigenFactory: LENGTH_MISMATCH");
-
-      console.log(`setAttributes reverts as expected when traits and values are not equal length`);
+      )).to.be.revertedWith("LiquigenPair: LENGTH_MISMATCH");
     } catch (error) {
       console.log("Error setting attributes for token:", error);
       throw error;
@@ -364,9 +344,7 @@ describe("LiquigenPair", function () {
         ["trait1", "trait2", "trait3"],
         ["value1", "value2", "value3"],
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
-      )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
-
-      console.log(`setAttributes does not allow non-admin to set attributes for a token`);
+      )).to.be.revertedWith("LiquigenPair: UNAUTHORIZED");
     } catch (error) {
       console.log("Error setting attributes for token:", error);
       throw error;
@@ -389,8 +367,6 @@ describe("LiquigenPair", function () {
       );
 
       expect(await LiquigenPair.locked(1)).to.equal(true);
-
-      console.log(`set locked status for token as expected`);
     } catch (error) {
       console.log("Error setting locked status for token:", error);
       throw error;
@@ -407,9 +383,7 @@ describe("LiquigenPair", function () {
       await expect(LiquigenPair.connect(user1).setLocked(
         1,
         true
-      )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
-
-      console.log(`setLocked does not allow non-admin to set locked status for a token`);
+      )).to.be.revertedWith("LiquigenPair: UNAUTHORIZED");
     } catch (error) {
       console.log("Error setting locked status for token:", error);
       throw error;
@@ -425,8 +399,6 @@ describe("LiquigenPair", function () {
       );
 
       expect(await LiquigenPair.mintThreshold()).to.equal(2000);
-
-      console.log(`set mint threshold as expected`);
     } catch (error) {
       console.log("Error setting mint threshold:", error);
       throw error;
@@ -437,9 +409,7 @@ describe("LiquigenPair", function () {
     try {
       await expect(LiquigenPair.connect(user1).setMintThreshold(
         100
-      )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
-
-      console.log(`setMintThreshold does not allow non-admin to set mint threshold`);
+      )).to.be.revertedWith("LiquigenPair: UNAUTHORIZED");
     } catch (error) {
       console.log("Error setting mint threshold:", error);
       throw error;
@@ -471,8 +441,6 @@ describe("LiquigenPair", function () {
       expect(await LiquigenPair.uniqueness('0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000')).to.equal(false);
 
       await expect(LiquigenPair.ownerOf(1)).to.be.revertedWithCustomError(LiquigenPair, "OwnerQueryForNonexistentToken");
-
-      console.log(`burned NFT and reset uniqueness as expected`);
     } catch (error) {
       console.log("Error burning NFT:", error);
       throw error;
@@ -531,8 +499,6 @@ describe("LiquigenPair", function () {
 
       // Check that the new token was minted
       expect(await LiquigenPair.ownerOf(3)).to.equal(user1.address);
-
-      console.log(`merged NFTs as expected`);
     } catch (error) {
       console.log("Error merging NFTs:", error);
       throw error;
@@ -569,16 +535,14 @@ describe("LiquigenPair", function () {
       // Attempt to merge the two tokens
       await expect(LiquigenPair.connect(user2).mergeNFTs(
         [ 1, 2 ]
-      )).to.be.revertedWith("Only owned NFT can be merged");
-
-      console.log(`mergeNFTs does not allow user to merge nfts they don't own`);
+      )).to.be.revertedWith("LiquigenPair: UNAUTHORIZED");
     } catch (error) {
       console.log("Error merging NFTs:", error);
       throw error;
     }
   });
 
-  it("should transfer NFT & LP tokens", async function () {
+  it("should transfer NFT & LP tokens to another user", async function () {
     try {
       // Mint an NFT and set attributes for it
       await LiquigenPair.mint(
@@ -596,6 +560,10 @@ describe("LiquigenPair", function () {
       // Set approval for LP tokens
       await DexPair.connect(user1).approve(LiquigenPair.target, 1000);
 
+      expect(await LiquigenPair.ownerOf(1)).to.equal(user1.address);
+      expect(await DexPair.balanceOf(user1.address)).to.equal(10000);
+      expect(await DexPair.balanceOf(user2.address)).to.equal(0);
+
       // Transfer NFT to user2
       await LiquigenPair.connect(user1).transferFrom(
         user1.address,
@@ -606,10 +574,6 @@ describe("LiquigenPair", function () {
       expect(await LiquigenPair.ownerOf(1)).to.equal(user2.address);
       expect(await DexPair.balanceOf(user1.address)).to.equal(9000);
       expect(await DexPair.balanceOf(user2.address)).to.equal(1000);
-      
-
-
-      console.log(`transferred NFT and 1000 LP tokens from user1 to user2 as expected`);
     } catch (error) {
       console.log("transferFrom error:", error);
       throw error;
@@ -630,21 +594,360 @@ describe("LiquigenPair", function () {
         ["value1", "value2", "value3"],
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
       );
+     
+      await DexPair.connect(user1).approve(LiquigenPair.target, 1000);
 
       // Attempt to transfer NFT to user2
       await expect(LiquigenPair.connect(user2).transferFrom(
         user1.address,
         user2.address,
         1
-      )).to.be.revertedWith("ERC721: transfer caller is not owner nor approved");
-
-      console.log(`transferFrom does not allow user to transfer NFT they don't own`);
+      )).to.be.revertedWithCustomError(LiquigenPair, "TransferCallerNotOwnerNorApproved");
     } catch (error) {
       console.log("transferFrom error:", error);
       throw error;
     }
   });
 
-  // TODO: write transfer test functions
-  // TOOD: write adminTransfer test functions
+  it("should not allow user to transfer NFT that is locked", async function () {
+    try {
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      await LiquigenPair.setLocked(
+        1,
+        true
+      );
+
+      await DexPair.connect(user1).approve(LiquigenPair.target, 1000);
+
+      // Attempt to transfer NFT to user2
+      await expect(LiquigenPair.connect(user1).transferFrom(
+        user1.address,
+        user2.address,
+        1
+      )).to.be.revertedWith("LiquigenPair: TOKEN_LOCKED");
+    } catch (error) {
+      console.log("transferFrom error:", error);
+      throw error;
+    }
+  });
+
+  it("should not allow user to transfer NFT if they don't have LP tokens", async function () {
+    try {
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      // Emulate user1 burning their LP tokens. NFT would normally be burnt in this scenario
+      await DexPair.connect(user1).transfer(DexPair.target, 10000);
+      await DexPair.burn(user1.address);
+
+      // Attempt to transfer NFT to user2
+      await expect(LiquigenPair.connect(user1).transferFrom(
+        user1.address,
+        user2.address,
+        1
+      )).to.be.revertedWith("LiquigenPair: INSUFFICIENT_LP_BALANCE");
+    } catch (error) {
+      console.log("transferFrom error:", error);
+      throw error;
+    }
+  });
+
+  it("should not allow user to transfer NFT if LP allowance is not set for LiquigenPair contract", async function () {
+    try {
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      // Attempt to transfer NFT to user2 without approval
+      await expect(LiquigenPair.connect(user1).transferFrom(
+        user1.address,
+        user2.address,
+        1
+      )).to.be.revertedWith("LiquigenPair: INSUFFICIENT_LP_ALLOWANCE");
+    } catch (error) {
+      console.log("transferFrom error:", error);
+      throw error;
+    }
+  });
+
+  it("should transfer NFT to exempt address & LP tokens to LiquigenPair contract for holding", async function () {
+    try {
+      // Set an exempt address for something like an NFT staking contract or owner wallet
+      await LiquigenFactory.setExempt(
+        user3.address, 
+        true
+      );
+
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      // Set approval for LP tokens
+      await DexPair.connect(user1).approve(LiquigenPair.target, 1000);
+
+      expect(await LiquigenPair.ownerOf(1)).to.equal(user1.address);
+      expect(await DexPair.balanceOf(user1.address)).to.equal(10000);
+      expect(await DexPair.balanceOf(LiquigenPair.target)).to.equal(0);
+      expect(await LiquigenPair.lockedLP(1)).to.equal(0);
+
+      // Transfer NFT to exempt address
+      await LiquigenPair.connect(user1).transferFrom(
+        user1.address,
+        user3.address,
+        1
+      );
+
+      expect(await LiquigenPair.ownerOf(1)).to.equal(user3.address);
+      expect(await DexPair.balanceOf(user1.address)).to.equal(9000);
+      expect(await DexPair.balanceOf(LiquigenPair.target)).to.equal(1000);
+      expect(await LiquigenPair.lockedLP(1)).to.equal(1000);
+    } catch (error) {
+      console.log("transferFrom error:", error);
+      throw error;
+    }
+  });
+
+  it("should transfer NFT & LP tokens from exempt address and LiquigenPair contract to user (does not need to be original user)", async function () {
+    try {
+      // Set an exempt address for something like an NFT staking contract or owner wallet
+      await LiquigenFactory.setExempt(
+        user3.address, 
+        true
+      );
+
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      // Set approval for LP tokens
+      await DexPair.connect(user1).approve(LiquigenPair.target, 1000);
+
+      // Transfer NFT to exempt address
+      await LiquigenPair.connect(user1).transferFrom(
+        user1.address,
+        user3.address,
+        1
+      );
+
+      // Transfer NFT from exempt address to user
+      await LiquigenPair.connect(user3).transferFrom(
+        user3.address,
+        user2.address,
+        1
+      );
+
+      expect(await LiquigenPair.ownerOf(1)).to.equal(user2.address);
+      expect(await DexPair.balanceOf(user2.address)).to.equal(1000);
+      expect(await DexPair.balanceOf(LiquigenPair.target)).to.equal(0);
+      expect(await LiquigenPair.lockedLP(1)).to.equal(0);
+    } catch (error) {
+      console.log("transferFrom error:", error);
+      throw error;
+    }
+  });
+
+  it("should allow admin to transfer NFT from one user to another directly", async function () {
+    try {
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      expect(await LiquigenPair.ownerOf(1)).to.equal(user1.address);
+      expect(await DexPair.balanceOf(user1.address)).to.equal(10000);
+      expect(await DexPair.balanceOf(user2.address)).to.equal(0);
+
+      // Transfer LP tokens from user1 to user2 to emulate normal transfer
+      await DexPair.connect(user1).transfer(user2.address, 1000);
+
+      // Transfer NFT to user2 from admin account
+      // Fewer requirements, as this is intended to be called when user transfers LP tokens
+      await LiquigenPair.connect(admin).adminTransfer(
+        user1.address,
+        user2.address,
+        1
+      );
+
+      expect(await LiquigenPair.ownerOf(1)).to.equal(user2.address);
+      expect(await DexPair.balanceOf(user1.address)).to.equal(9000);
+      expect(await DexPair.balanceOf(user2.address)).to.equal(1000);
+    } catch (error) {
+      console.log("transferFrom error:", error);
+      throw error;
+    }
+  });
+
+  it("should allow admin to emergency transfer tokens sent directly to the contract by mistake", async function () {
+    try {
+      // Mint some ERC20 tokens to user2
+      await ERC20token0.mint(user2.address, 50000);
+
+      expect(await ERC20token0.balanceOf(user2.address)).to.equal(50000);
+
+      // User2 transfers those tokens directly to the contract
+      await ERC20token0.connect(user2).transfer(LiquigenPair.target, 10000);
+
+      expect(await ERC20token0.balanceOf(user2.address)).to.equal(40000);
+      expect(await ERC20token0.balanceOf(LiquigenPair.target)).to.equal(10000);
+
+      // Admin transfers those tokens back to user2
+      await LiquigenPair.connect(admin).emergencyTransfer(
+        ERC20token0.target,
+        user2.address,
+        10000
+      );
+
+      expect(await ERC20token0.balanceOf(user2.address)).to.equal(50000);
+      expect(await ERC20token0.balanceOf(LiquigenPair.target)).to.equal(0);
+
+    } catch (error) {
+      console.log("adminTransfer error:", error);
+      throw error;
+    }
+  });
+
+  it("should not allow admin to emergency transfer tokens to 0 address", async function () {
+    try {
+      // Mint some ERC20 tokens to user2
+      await ERC20token0.mint(user2.address, 50000);
+
+      // User2 transfers those tokens directly to the contract
+      await ERC20token0.connect(user2).transfer(LiquigenPair.target, 10000);
+      
+      // Admin attempts to transfer those tokens to 0 address by mistake
+      await expect(LiquigenPair.connect(admin).emergencyTransfer(
+        ERC20token0.target,
+        ethers.ZeroAddress,
+        10000
+      )).to.be.revertedWith("LiquigenPair: INVALID_ADDRESS");
+    } catch (error) {
+      console.log("adminTransfer error:", error);
+      throw error;
+    }
+  });
+
+  it("should not allow admin to emergency transfer more tokens than the contract has", async function () {
+    try {
+      // Mint some ERC20 tokens to user2
+      await ERC20token0.mint(user2.address, 50000);
+
+      // User2 transfers those tokens directly to the contract
+      await ERC20token0.connect(user2).transfer(LiquigenPair.target, 10000);
+      
+      // Admin attempts to transfer those tokens to 0 address by mistake
+      await expect(LiquigenPair.connect(admin).emergencyTransfer(
+        ERC20token0.target,
+        user2.address,
+        100000
+      )).to.be.revertedWith("LiquigenPair: INSUFFICIENT_BALANCE");
+    } catch (error) {
+      console.log("adminTransfer error:", error);
+      throw error;
+    }
+  });
+
+  it("should not allow admin to emergency transfer LP tokens in excess of locked amount", async function () {
+    try {
+      // Set an exempt address for something like an NFT staking contract or owner wallet
+      await LiquigenFactory.setExempt(
+        user3.address, 
+        true
+      );
+
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      // Set approval for LP tokens
+      await DexPair.connect(user1).approve(LiquigenPair.target, 1000);
+
+      // Transfer NFT to exempt address
+      await LiquigenPair.connect(user1).transferFrom(
+        user1.address,
+        user3.address,
+        1
+      );
+
+      // User1 transfers additional LP tokens directly to the contract
+      await DexPair.connect(user1).transfer(LiquigenPair.target, 1000);
+
+      expect(await DexPair.balanceOf(LiquigenPair.target)).to.equal(2000);
+      
+      // Admin attempts to transfer too many LP tokens by mistake
+      await expect(LiquigenPair.connect(admin).emergencyTransfer(
+        DexPair.target,
+        user1.address,
+        2000
+      )).to.be.revertedWith("LiquigenPair: EXCEEDS_LOCKED_LP");
+    } catch (error) {
+      console.log("adminTransfer error:", error);
+      throw error;
+    }
+  });
 });

@@ -22,13 +22,14 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     mapping(bytes32 => bool) public uniqueness; // dna => bool. Keeps track of the uniqueness of the attributes
     mapping(address => bool) public admin; //Keeps track of addresses with admin privileges
     mapping(address => uint) public balances; // Keeps track of the LP token balances of the addresses
-    mapping(address => mapping(uint => uint)) public lockedLP; // Keeps track of user's LP balance in the contract per tokenID sent to exempt address
+    mapping(uint => uint) public lockedLP; // Keeps track of LP balance in the contract per tokenID sent to exempt address
     
     address public factory;
     address public lpPairContract;
     address public liquigenWallet;
 
     uint public mintThreshold = 1000;
+    uint internal lockedLPTotal = 0;
 
     bool internal initialized = false;
 
@@ -50,7 +51,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     // ~~~~~~~~~~~~~~~~~~~~ Modifiers ~~~~~~~~~~~~~~~~~~~~
     modifier onlyAdmin() {
         if (!admin[_msgSender()]) {
-            revert("LiquigenFactory: UNAUTHORIZED");
+            revert("LiquigenPair: UNAUTHORIZED");
         }
         _;
     }
@@ -61,23 +62,33 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         address _to, 
         uint256 _tokenId
     ) public payable override(ERC721A, IERC721A) {
-        require(!locked[_tokenId], "Token is locked");
+        require(!locked[_tokenId], "LiquigenPair: TOKEN_LOCKED");
 
         uint tokenValue = attributes[_tokenId].lpValueAtMint;
 
         if (LiquigenFactory(factory).exempt(_from)) {
-            IERC20(lpPairContract).transferFrom(address(this), _to, tokenValue);
+            require(IERC20(lpPairContract).balanceOf(address(this)) >= tokenValue, "LiquigenPair: INSUFFICIENT_CONTRACT_LP_BALANCE");
+            require(lockedLP[_tokenId] > 0, "LiquigenPair: INSUFFICIENT_LOCKED_LP");
+            require(lockedLP[_tokenId] == tokenValue, "LiquigenPair: LP_MISMATCH");
 
+            // Transfer LP balance to the NFT receiver
+            IERC20(lpPairContract).transfer(_to, tokenValue);
+
+            lockedLP[_tokenId] = 0;
+            lockedLPTotal -= tokenValue;
+
+            // Transfer the NFT
             super.transferFrom(_from, _to, _tokenId);
             return;
         } else {
-            require(IERC20(lpPairContract).balanceOf(_from) >= tokenValue, "Insufficient LP token balance!");
-            require(IERC20(lpPairContract).allowance(_from, address(this)) >= tokenValue, "Insufficient allowance for LP token");
+            require(IERC20(lpPairContract).balanceOf(_from) >= tokenValue, "LiquigenPair: INSUFFICIENT_LP_BALANCE");
+            require(IERC20(lpPairContract).allowance(_from, address(this)) >= tokenValue, "LiquigenPair: INSUFFICIENT_LP_ALLOWANCE");
 
             if (LiquigenFactory(factory).exempt(_to)) {
-                // Transfer the LP token to this contract
+                // Transfer the LP balance to this contract
                 IERC20(lpPairContract).transferFrom(_from, address(this), tokenValue);
-                lockedLP[_from][_tokenId] = tokenValue;
+                lockedLP[_tokenId] = tokenValue;
+                lockedLPTotal += tokenValue;
             } else {
                 // Transfer the LP token to the NFT receiver
                 IERC20(lpPairContract).transferFrom(_from, _to, tokenValue);
@@ -92,8 +103,8 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         address _to, 
         uint256 _tokenId
     ) public payable override(ERC721A, IERC721A) {
-        require(!locked[_tokenId], "Token is locked");
-        require(IERC20(lpPairContract).allowance(_msgSender(), address(this)) >= mintThreshold, "Insufficient allowance for LP token");
+        require(!locked[_tokenId], "LiquigenPair: TOKEN_LOCKED");
+        require(IERC20(lpPairContract).allowance(_msgSender(), address(this)) >= mintThreshold, "LiquigenPair: INSUFFICIENT_LP_ALLOWANCE");
 
         super.approve(_to, _tokenId);
     }
@@ -103,7 +114,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         address operator
     ) public view override(ERC721A, IERC721A) returns (bool) {
         // Automatically approve the contract to manage all tokens
-        if (operator == address(this) || operator == liquigenWallet) {
+        if (operator == address(this) || admin[operator]) {
             return true;
         }
         return super.isApprovedForAll(owner, operator);
@@ -115,7 +126,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         address _to,
         uint rarityModifier
     ) external onlyAdmin {
-        require(IERC20(lpPairContract).balanceOf(_to) >= mintThreshold, "Insufficient LP token balance!");
+        require(IERC20(lpPairContract).balanceOf(_to) >= mintThreshold, "LiquigenPair: INSUFFICIENT_LP_BALANCE");
 
         uint tokenId = _nextTokenId();
         _safeMint(_to, 1);
@@ -127,8 +138,8 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         address _factory, 
         address _pair
     ) external {
-        require(!initialized, "This contract has already been initialized");
-        require(_factory != address(0), "Invalid factory address");
+        require(!initialized, "LiquigenPair: ALREADY_INITIALIZED");
+        require(_factory != address(0), "LiquigenPair: INVALID_FACTORY_ADDRESS");
         initialized = true;
         factory = _factory;
         lpPairContract = _pair;
@@ -155,10 +166,10 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         bytes32 _dna
     ) external onlyAdmin {
         if (_values.length != _traitTypes.length) {
-            revert("LiquigenFactory: LENGTH_MISMATCH");
+            revert("LiquigenPair: LENGTH_MISMATCH");
         }
         if (uniqueness[_dna]) {
-            revert("LiquigenFactory: DNA_ALREADY_EXISTS");
+            revert("LiquigenPair: DNA_ALREADY_EXISTS");
         }
 
         Attributes storage newAttr = attributes[_tokenId];
@@ -229,11 +240,12 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         }
 
         string memory uri = LiquigenFactory(factory).getURI();
+        uint lpValueAtMint = attributes[_id].lpValueAtMint;
 
-        // TODO: add lpValueAtMint to metadata
         return
             MetadataLibrary.buildTokenURI(
                 _id,
+                lpValueAtMint,
                 tokenName,
                 description,
                 uri,
@@ -247,7 +259,7 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         uint balance = tokenIds.length;
         // Ensure ownership of all tokens
         for (uint i = 0; i < tokenIds.length; i++) {
-            require(ownerOf(tokenIds[i]) == msg.sender, "Only owned NFT can be merged");
+            require(ownerOf(tokenIds[i]) == msg.sender, "LiquigenPair: UNAUTHORIZED");
         }
 
         // Burn old tokens
@@ -259,16 +271,6 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         uint tokenId = _nextTokenId();
         _safeMint(msg.sender, 1);
         LiquigenFactory(factory).generateMetadata(tokenId, msg.sender, address(this), balance);
-    }
-
-    function reclaimLP(address _claimee, uint _tokenId) public {
-        require(_claimee == msg.sender, "Only the owner can reclaim LP tokens");
-        require(ownerOf(_tokenId) == _claimee, "Can only reclaim LP tokens when token is returned");
-        require(lockedLP[_claimee][_tokenId] > 0, "No LP tokens to reclaim");
-
-        uint balance = lockedLP[_claimee][_tokenId];
-        IERC20(lpPairContract).transferFrom(address(this), _claimee, balance);
-        lockedLP[_claimee][_tokenId] = 0;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ Admin Functions ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -285,10 +287,22 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         bool _state
     ) public onlyAdmin {
         if (!_state) {
-            require(_admin != liquigenWallet && _admin != factory, "Cannot remove super admin privileges");
+            require(_admin != liquigenWallet && _admin != factory, "LiquigenPair: UNAUTHORZED_SUPER_ADMIN");
         }
         admin[_admin] = _state;
     }
 
-    // TODO: add emergencyWithdrawl function in case someone transfers funds directly to the contract
+    function emergencyTransfer(
+        address _token,
+        address _to,
+        uint _amount
+    ) external onlyAdmin {
+        require(_to != address(0), "LiquigenPair: INVALID_ADDRESS");
+        require(IERC20(_token).balanceOf(address(this)) >= _amount, "LiquigenPair: INSUFFICIENT_BALANCE");
+        if (_token == lpPairContract) {
+            require(_amount < lockedLPTotal, "LiquigenPair: EXCEEDS_LOCKED_LP");
+        }
+
+        IERC20(_token).transfer(_to, _amount);
+    }
 }

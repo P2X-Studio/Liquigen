@@ -14,6 +14,7 @@ library MetadataLibrary {
 
     function buildTokenURI(
         uint256 tokenId,
+        uint256 lpValueAtMint,
         string memory name,
         string memory description,
         string memory uri,
@@ -50,6 +51,7 @@ library MetadataLibrary {
                 '"name": "', tokenName, '", ',
                 '"description": "', description, '", ',
                 '"image": "', imageLink, '", ',
+                '"LP Value": "', lpValueAtMint, '", ',
                 '"attributes": ', attrStr,
                 "}"
             )))

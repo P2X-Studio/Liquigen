@@ -39,34 +39,32 @@ describe("LiquigenFactory", function () {
 
   it("should create a new LiquigenPair", async function () {
     try {
-        const tx = await LiquigenFactory.createPair(
-            "Test Pair",
-            "TPAIR",
-            "ipfs://traitsCID",
-            "A test pair",
-            dexPairContract.target
-        );
+      const tx = await LiquigenFactory.createPair(
+          "Test Pair",
+          "TPAIR",
+          "ipfs://traitsCID",
+          "A test pair",
+          dexPairContract.target
+      );
 
-        const receipt = await tx.wait();
+      const receipt = await tx.wait();
 
-        // Use the contract's interface to parse logs
-        const eventLogs = receipt.logs.map(log => {
-            try {
-                return LiquigenFactory.interface.parseLog(log);
-            } catch (error) {
-                return null;
-            }
-        }).filter(event => event !== null);
+      // Use the contract's interface to parse logs
+      const eventLogs = receipt.logs.map(log => {
+          try {
+              return LiquigenFactory.interface.parseLog(log);
+          } catch (error) {
+              return null;
+          }
+      }).filter(event => event !== null);
 
-        // Check if the PairCreated event exists
-        const event = eventLogs.find(e => e.name === "PairCreated");
-        // console.log(event);
-        expect(event).to.exist;
+      // Check if the PairCreated event exists
+      const event = eventLogs.find(e => e.name === "PairCreated");
+      // console.log(event);
+      expect(event).to.exist;
 
-        const pairAddress = event.args.liquigenPair;
-        expect(pairAddress).to.not.equal(ethers.ZeroAddress);
-        
-        console.log("LiquigenPair successfully created at:", pairAddress);
+      const pairAddress = event.args.liquigenPair;
+      expect(pairAddress).to.not.equal(ethers.ZeroAddress);
     } catch (error) {
         console.error("Error creating pair:", error);
         throw error;
@@ -81,8 +79,6 @@ describe("LiquigenFactory", function () {
 
       const imageUrl = await LiquigenFactory.imageUrl();
       expect(imageUrl).to.equal('Test imageUrl');
-
-      console.log(`imageUrl sucessfully updated to '${imageUrl}'`);
     } catch (error) {
       console.log("Error calling updateImageUrl:", error);
       throw error;
@@ -104,8 +100,6 @@ describe("LiquigenFactory", function () {
         false
       );
       expect(await LiquigenFactory.exempt(addresses[0])).to.equal(false);
-
-      console.log(`exempt addresses added and removed as expected`);
     } catch (error) {
       console.log("Error calling updateExempt:", error);
       throw error;
@@ -130,8 +124,6 @@ describe("LiquigenFactory", function () {
         false
       );
       expect(await LiquigenFactory.admin(user.address)).to.equal(false);
-
-      console.log(`admin addresses added and removed as expected`);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -145,8 +137,6 @@ describe("LiquigenFactory", function () {
         user.address,
         true
       )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
-
-      console.log(`setAdminPrivileges does not allow non-admin to set admin priviliges`);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -162,8 +152,6 @@ describe("LiquigenFactory", function () {
         owner.address,
         false
       )).to.be.revertedWith("Cannot remove super admin privileges");
-
-      console.log(`setAdminPrivileges does not allow removing Liquigen wallet as admin`);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -218,9 +206,8 @@ describe("LiquigenFactory", function () {
       false,
       liquigenPairAddress
     );
-    expect(await LiquigenPair.admin(user.address)).to.equal(false);
 
-      console.log(`admin addresses added and removed as expected on specified pair when valid`);
+    expect(await LiquigenPair.admin(user.address)).to.equal(false);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -235,8 +222,6 @@ describe("LiquigenFactory", function () {
         true,
         dexPairContract.target
       )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
-
-      console.log(`setPairAdminPrivileges does not allow non-admin to set admin priviliges for specified pair`);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -253,8 +238,6 @@ describe("LiquigenFactory", function () {
         true,
         nonLiquigenPairAddress
       )).to.be.revertedWith("LiquigenFactory: COLLECTION_NOT_FOUND");
-
-      console.log(`setPairAdminPrivileges reverted as expected when callid for invalid pair`);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -271,8 +254,6 @@ describe("LiquigenFactory", function () {
       );
 
       expect(await LiquigenFactory.liquigenWallet()).to.equal(admin.address);
-
-      console.log(`setLiquigenWallet updates as expected when called from liquigenWallet`);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
@@ -287,8 +268,6 @@ describe("LiquigenFactory", function () {
       await expect(LiquigenFactory.connect(admin).setLiquigenWallet(
         admin.address
       )).to.be.revertedWith("LiquigenFactory: UNAUTHORIZED");
-
-      console.log(`setLiquigenWallet does not allow changing liquigenWallet when called from another address`);
     } catch (error) {
       console.log("Error calling setAdminPrivileges:", error);
       throw error;
