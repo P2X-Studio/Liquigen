@@ -19,16 +19,18 @@ async function processPairCreated(token0, token1, pair) {
   const token0Symbol = await token0Contract.symbol();
   const token1Contract = new ethers.Contract(token1, dexPairAbi.abi, provider);
   const token1Symbol = await token1Contract.symbol();
-  const name = `${token0Symbol}-${token1Symbol} Liquigen NFT`;
+  const name = `${token0Symbol}/${token1Symbol} Liquigen NFT`;
   // Determine pair symbol
-  const symbol = `${token0Symbol}-${token1Symbol}`;
-  // Determine mint threshold
+  const symbol = `${token0Symbol}/${token1Symbol}_NFT`;
   liquigenFactory.createPair(name, symbol, traitCID, description, liquigenWallet, pair);
   // TODO: add to pairs.json
 }
 
 async function processDeposit(erc20, erc721, caller, value) {
+  // Update mintThreshold in LiquigenPair contract
   const mintThreshold = await calculateMintThreshold(erc20);
+  await liquigenPair.setMintThreshold(mintThreshold);
+
   const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
 
   if (value >= mintThreshold) {
@@ -36,23 +38,25 @@ async function processDeposit(erc20, erc721, caller, value) {
     liquigenPair.mint(caller, modifier);
   }
 
-  liquigenPair.setMintThreshold(mintThreshold);
-
-  console.log(`Minted ${amount} NFTs to ${caller}`);
+  console.log(`Minted NFT to ${caller} with a rarity modifier of ${modifier}`);
 }
 
 async function processWithdrawal(erc20, erc721, caller, value) {
+  // Update mintThreshold in LiquigenPair contract
+  const mintThreshold = await calculateMintThreshold(erc20);
+  await liquigenPair.setMintThreshold(mintThreshold);
+
   const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
   const ownedTokens = liquigenPair.tokensOfOwner(caller);
   
   // Calculate total value of NFTs
   let totalNftValue = 0;
   let nftValues = {};
-  ownedTokens.forEach((token) => {
-    const attrs = liquigenPair.getTokenAttributes(token);
+  ownedTokens.forEach((tokenId) => {
+    const attrs = liquigenPair.getTokenAttributes(tokenId);
     const nftValue = attrs[3]
     totalNftValue += nftValue;
-    nftValues[token] = nftValue;
+    nftValues[tokenId] = nftValue;
   });
 
   // Burn NFT to match initial value
@@ -60,46 +64,83 @@ async function processWithdrawal(erc20, erc721, caller, value) {
   let amount = 0;
   while (burning) {
     nftValues.forEach((nft) => {
+      // End while loop if totalNftValue is less than value
+      if (value < totalNftValue) {
+        burning = false;
+      }
+
+      // Burn NFT
       liquigenPair.burnNFT(nft);
       totalNftValue -= nft.value;
       delete nftValues[nft];
 
-      if (value < totalNftValue) {
-        burning = false;
-      }
+      amount++;
     });
   }
-
-  liquigenPair.setMintThreshold(mintThreshold);
 
   console.log(`Burnt ${amount} NFTs from ${caller}`);
 }
 
 async function processERC20Transfer(erc20, erc721, caller, recipient, value) {
-  // TODO: factor in exempt addresses.
-  // TODO: udpate mintthreshold when called 
+  const callerExempt = await liquigenFactory.exempt(caller);
+  const recipientExempt = await liquigenFactory.exempt(recipient);
+
   const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
-  const amount = Math.floor(value / mintThreshold);
-  const ownedTokens = liquigenPair.tokensOfOwner(caller);
-  // Loop through owned tokens and transfer appropriate amount to the recipient
-  for (let i = 0; i < amount; i++) {
-    const tokenId = ownedTokens[i];
-    liquigenPair.adminTransfer(caller, recipient, tokenId);
+
+  let ownedTokens, amount;
+
+  if (recipientExempt) {
+    // Lock NFT
+    ownedTokens = liquigenPair.tokensOfOwner(caller);
+    amount = Math.floor(value / mintThreshold);
+
+    for (let i = 0; i < amount; i++) {
+      const tokenId = ownedTokens[i];
+      liquigenPair.setLocked(tokenId, true);
+    }
+  } else if (callerExempt) {
+    // Unlock NFT
+    ownedTokens = liquigenPair.tokensOfOwner(caller);
+    amount = Math.floor(value / mintThreshold);
+
+    while (amount >= ownedTokens.length) {
+      for (let i = 0; i < ownedTokens.length; i++) {
+        const tokenId = ownedTokens[i];
+        liquigenPair.setLocked(tokenId, false);
+        amount--;
+      }
+    }
+  } else {
+    // Transfer NFT
+    ownedTokens = liquigenPair.tokensOfOwner(caller);
+    amount = Math.floor(value / mintThreshold);
+
+    for (let i = 0; i < amount; i++) {
+      const tokenId = ownedTokens[i];
+      liquigenPair.adminTransfer(caller, recipient, tokenId);
+    }
   }
 }
 
 async function processERC20Approval(erc20, erc721, owner, spender, value) {
   if (spender === liquigenWallet) {
     const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
-    const ownerBalance = liquigenPair.balanceOf(owner);
-    const amount = Math.floor(value / mintThreshold);
+    const ownedTokens = await liquigenPair.tokensOfOwner(owner);
+    const totalNftValue = 0;
 
-    if (amount < ownerBalance) {
-      const ownedTokens = liquigenPair.tokensOfOwner(owner);
+    // Calculate total value of NFTs
+    for (let i = 0; i < ownedTokens.length; i++) {
+      const tokenId = await liquigenPair.tokensOfOwner(owner)[i];
+      const attrs = await liquigenPair.getTokenAttributes(tokenId);
+      totalNftValue += attrs[3];
+    }
+
+    if (value < totalNftValue) {
+      const ownedTokens = await liquigenPair.tokensOfOwner(owner);
       // Loop through owned tokens and lock them
       for (let i = 0; i < ownerBalance - value; i++) {
         const tokenId = ownedTokens[i];
-        liquigenPair.setLocked(tokenId, true);
+        await liquigenPair.setLocked(tokenId, true);
       }
     }
   }

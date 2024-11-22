@@ -20,8 +20,6 @@ import {
 const app = express();
 const port = process.env.PORT || 3001;
 
-const zeroAddress = ethers.constants.AddressZero;
-
 // Monitor events from multiple contracts
 /*
 EVENTS TO LISTEN TO AND TAKE ACTION ON:
@@ -50,10 +48,10 @@ const listenToEvents = async () => {
 
     // Listen for 'Transfer' events from DEX pair
     dexPair.on('Transfer', async (from, to, value) => {
-      if (from === zeroAddress) { // Liquidity deposited
+      if (from === ethers.ZeroAddress) { // Liquidity deposited
         console.log(`Liquidity deposited to ${erc20address}: ${value}`);
         await processDeposit(erc20address, erc721address, to, value);
-      } else if (to === zeroAddress) { // Liquidity withdrawn
+      } else if (to === ethers.ZeroAddress) { // Liquidity withdrawn
         console.log(`Liquidity withdrawn from ${erc20address}: ${value}`);
         await processWithdrawal(erc20address, erc721address, from, value);
       } else { // Transfer from user to user

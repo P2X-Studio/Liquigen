@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { sha1 } = require("sha1");
 const dexFactoryContract = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const dexPairContract = require("@uniswap/v2-core/build/UniswapV2Pair.json");
 const ERC20Contract = require("@openzeppelin/contracts/build/contracts/ERC20PresetMinterPauser.json");
@@ -217,6 +216,8 @@ describe("LiquigenPair", function () {
       expect(event.args.owner).to.equal(user1.address);
       expect(event.args.collection).to.equal(LiquigenPair.target);
       expect(event.args.rarityModifier).to.equal(1);
+
+      expect(await LiquigenPair.locked(1)).to.equal(true);
     } catch (error) {
       console.log("Error minting token:", error);
       throw error;
@@ -280,7 +281,7 @@ describe("LiquigenPair", function () {
     }
   });
 
-  it("should revert setAttributes when dna is not unique", async function () {
+  it("should not set attributes when dna is not unique", async function () {
     try {
       // Mint two tokens to set attributes for
       await LiquigenPair.mint(
@@ -312,7 +313,7 @@ describe("LiquigenPair", function () {
     }
   });
 
-  it("should revert setAttributes when traits and values are not equal length", async function () {
+  it("should not set attributes when traits and values are not equal length", async function () {
     try {
       // Mint a token to set attributes for
       await LiquigenPair.mint(
@@ -359,14 +360,14 @@ describe("LiquigenPair", function () {
         1
       );
 
-      expect(await LiquigenPair.locked(1)).to.equal(false);
+      expect(await LiquigenPair.locked(1)).to.equal(true);
 
       await LiquigenPair.setLocked(
         1,
-        true
+        false
       );
 
-      expect(await LiquigenPair.locked(1)).to.equal(true);
+      expect(await LiquigenPair.locked(1)).to.equal(false);
     } catch (error) {
       console.log("Error setting locked status for token:", error);
       throw error;
@@ -474,6 +475,16 @@ describe("LiquigenPair", function () {
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000001'
       );
 
+      await LiquigenPair.setLocked(
+        1,
+        false
+      );
+
+      await LiquigenPair.setLocked(
+        2,
+        false
+      );
+
       // Merge the two tokens
       const mergeTx = await LiquigenPair.connect(user1).mergeNFTs(
         [ 1, 2 ]
@@ -542,6 +553,48 @@ describe("LiquigenPair", function () {
     }
   });
 
+  it("should not allow user to merge nfts that are locked", async function () {
+    try {
+      // Mint two tokens and set attributes for them
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.mint(
+        user1.address,
+        2
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      await LiquigenPair.setAttributes(
+        2,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000001'
+      );
+
+      await LiquigenPair.setLocked(
+        1,
+        false
+      );
+
+      // Attempt to merge the two tokens
+      await expect(LiquigenPair.connect(user1).mergeNFTs(
+        [ 1, 2 ]
+      )).to.be.revertedWith("LiquigenPair: NFT_LOCKED");
+    } catch (error) {
+      console.log("Error merging NFTs:", error);
+      throw error;
+    }
+  });
+
   it("should transfer NFT & LP tokens to another user", async function () {
     try {
       // Mint an NFT and set attributes for it
@@ -555,6 +608,11 @@ describe("LiquigenPair", function () {
         ["trait1", "trait2", "trait3"],
         ["value1", "value2", "value3"],
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      await LiquigenPair.setLocked(
+        1,
+        false
       );
 
       // Set approval for LP tokens
@@ -593,6 +651,11 @@ describe("LiquigenPair", function () {
         ["trait1", "trait2", "trait3"],
         ["value1", "value2", "value3"],
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      await LiquigenPair.setLocked(
+        1,
+        false
       );
      
       await DexPair.connect(user1).approve(LiquigenPair.target, 1000);
@@ -658,6 +721,11 @@ describe("LiquigenPair", function () {
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
       );
 
+      await LiquigenPair.setLocked(
+        1,
+        false
+      );
+
       // Emulate user1 burning their LP tokens. NFT would normally be burnt in this scenario
       await DexPair.connect(user1).transfer(DexPair.target, 10000);
       await DexPair.burn(user1.address);
@@ -687,6 +755,11 @@ describe("LiquigenPair", function () {
         ["trait1", "trait2", "trait3"],
         ["value1", "value2", "value3"],
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      await LiquigenPair.setLocked(
+        1,
+        false
       );
 
       // Attempt to transfer NFT to user2 without approval
@@ -720,6 +793,11 @@ describe("LiquigenPair", function () {
         ["trait1", "trait2", "trait3"],
         ["value1", "value2", "value3"],
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      await LiquigenPair.setLocked(
+        1,
+        false
       );
 
       // Set approval for LP tokens
@@ -766,6 +844,11 @@ describe("LiquigenPair", function () {
         ["trait1", "trait2", "trait3"],
         ["value1", "value2", "value3"],
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      await LiquigenPair.setLocked(
+        1,
+        false
       );
 
       // Set approval for LP tokens
@@ -924,6 +1007,11 @@ describe("LiquigenPair", function () {
         '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
       );
 
+      await LiquigenPair.setLocked(
+        1,
+        false
+      );
+
       // Set approval for LP tokens
       await DexPair.connect(user1).approve(LiquigenPair.target, 1000);
 
@@ -947,6 +1035,46 @@ describe("LiquigenPair", function () {
       )).to.be.revertedWith("LiquigenPair: EXCEEDS_LOCKED_LP");
     } catch (error) {
       console.log("adminTransfer error:", error);
+      throw error;
+    }
+  });
+
+  it("should transfer NFT to contract when LP tokens are transferred to exempt address", async function () {
+    try {
+      // Set an exempt address for something like an NFT staking contract or owner wallet
+      await LiquigenFactory.setExempt(
+        user3.address, 
+        true
+      );
+
+      // Mint an NFT and set attributes for it
+      await LiquigenPair.mint(
+        user1.address,
+        1
+      );
+
+      await LiquigenPair.setAttributes(
+        1,
+        ["trait1", "trait2", "trait3"],
+        ["value1", "value2", "value3"],
+        '0x796f752d6b6e65772d6d652d7468652d73616d65000000000000000000000000'
+      );
+
+      // Transfer LP from user1 to an exempt address
+      await DexPair.connect(user1).transfer(user2.address, 1000);
+
+      // Transfer NFT to contract from admin account
+      await LiquigenPair.connect(admin).adminTransfer(
+        user1.address,
+        LiquigenPair.target,
+        1
+      );
+
+      expect(await LiquigenPair.ownerOf(1)).to.equal(LiquigenPair.target);
+      expect(await DexPair.balanceOf(user1.address)).to.equal(9000);
+      expect(await DexPair.balanceOf(user2.address)).to.equal(1000);
+    } catch (error) {
+      console.log("transferFrom error:", error);
       throw error;
     }
   });

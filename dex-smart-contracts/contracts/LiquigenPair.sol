@@ -21,7 +21,6 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     mapping(uint => bool) public locked; // tokenId => bool. Keeps track of the locked status of the ERC721s
     mapping(bytes32 => bool) public uniqueness; // dna => bool. Keeps track of the uniqueness of the attributes
     mapping(address => bool) public admin; //Keeps track of addresses with admin privileges
-    mapping(address => uint) public balances; // Keeps track of the LP token balances of the addresses
     mapping(uint => uint) public lockedLP; // Keeps track of LP balance in the contract per tokenID sent to exempt address
     
     address public factory;
@@ -129,7 +128,11 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
         require(IERC20(lpPairContract).balanceOf(_to) >= mintThreshold, "LiquigenPair: INSUFFICIENT_LP_BALANCE");
 
         uint tokenId = _nextTokenId();
+
         _safeMint(_to, 1);
+
+        locked[tokenId] = true;
+        
         LiquigenFactory(factory).generateMetadata(tokenId, _to, address(this), rarityModifier);
     }
 
@@ -257,9 +260,10 @@ contract LiquigenPair is ERC721AQueryable, Ownable {
     // ~~~~~~~~~~~~~~~~~~~~~~~~~ User Functions ~~~~~~~~~~~~~~~~~~~~~~~~~
     function mergeNFTs(uint[] calldata tokenIds) public {
         uint balance = tokenIds.length;
-        // Ensure ownership of all tokens
+        // Ensure ownership and lock status of all tokens
         for (uint i = 0; i < tokenIds.length; i++) {
             require(ownerOf(tokenIds[i]) == msg.sender, "LiquigenPair: UNAUTHORIZED");
+            require(!locked[tokenIds[i]], "LiquigenPair: NFT_LOCKED");
         }
 
         // Burn old tokens
