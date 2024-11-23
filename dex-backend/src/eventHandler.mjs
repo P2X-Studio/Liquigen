@@ -60,28 +60,28 @@ async function processWithdrawal(erc20, erc721, caller, value) {
   });
 
   // Burn NFT to match initial value
-  let burning = true;
-  let amount = 0;
-  while (burning) {
-    nftValues.forEach((nft) => {
-      // End while loop if totalNftValue is less than value
-      if (value < totalNftValue) {
-        burning = false;
-      }
+  let count = 0;
 
-      // Burn NFT
-      liquigenPair.burnNFT(nft);
-      totalNftValue -= nft.value;
-      delete nftValues[nft];
+  for (let i = 0; i < ownedTokens.length; i++) {
+    const tokenId = ownedTokens[i];
+    const nft = nftValues[tokenId];
 
-      amount++;
-    });
+    // End loop if totalNftValue is less than value
+    if (value < totalNftValue) {
+      break;
+    }
+
+    await liquigenPair.burnNFT(nft);
+    totalNftValue -= nft.value;
+    delete nftValues[tokenId];
+
+    count++;
   }
 
-  console.log(`Burnt ${amount} NFTs from ${caller}`);
+  console.log(`Burnt ${count} NFTs from ${caller}`);
 }
 
-async function processERC20Transfer(erc20, erc721, caller, recipient, value) {
+async function processERC20Transfer(erc721, caller, recipient, value) {
   const callerExempt = await liquigenFactory.exempt(caller);
   const recipientExempt = await liquigenFactory.exempt(recipient);
 
@@ -120,27 +120,73 @@ async function processERC20Transfer(erc20, erc721, caller, recipient, value) {
       liquigenPair.adminTransfer(caller, recipient, tokenId);
     }
   }
+
+  console.log(`Processed ERC20 transfer from ${caller} to ${recipient}`);
 }
 
 async function processERC20Approval(erc20, erc721, owner, spender, value) {
   if (spender === liquigenWallet) {
     const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
     const ownedTokens = await liquigenPair.tokensOfOwner(owner);
-    const totalNftValue = 0;
 
-    // Calculate total value of NFTs
-    for (let i = 0; i < ownedTokens.length; i++) {
-      const tokenId = await liquigenPair.tokensOfOwner(owner)[i];
-      const attrs = await liquigenPair.getTokenAttributes(tokenId);
-      totalNftValue += attrs[3];
-    }
-
-    if (value < totalNftValue) {
-      const ownedTokens = await liquigenPair.tokensOfOwner(owner);
-      // Loop through owned tokens and lock them
+    if (value === 0) {
+      // Loop through owned tokens and lock them all
       for (let i = 0; i < ownerBalance - value; i++) {
         const tokenId = ownedTokens[i];
-        await liquigenPair.setLocked(tokenId, true);
+        const isLocked = await liquigenPair.locked(tokenId);
+        if (!isLocked) {
+          await liquigenPair.setLocked(tokenId, true);
+        }
+      }
+
+      console.log(`Approval revoked from ${owner} to Liquigen Wallet. All NFTs locked.`);
+    } else {
+      // Calculate total value of NFTs
+      let ownedTokensStatus = {};
+      let totalNftValue = 0;
+
+      for (let i = 0; i < ownedTokens.length; i++) {
+        const tokenId = await liquigenPair.tokensOfOwner(owner)[i];
+        const isLocked = await liquigenPair.locked(tokenId);
+        const attrs = await liquigenPair.getTokenAttributes(tokenId);
+        const nftValue = attrs[3];
+
+        totalNftValue += nftValue;
+        ownedTokensStatus[tokenId].locked = isLocked;
+        ownedTokensStatus[tokenId].value = nftValue;
+      }
+
+      if (value >= totalNftValue) {
+        // Make sure all owned tokens are unlocked
+        for (let i = 0; i < ownedTokens.length; i++) {
+          const tokenId = ownedTokens[i];
+          const isLocked = await liquigenPair.locked(tokenId);
+          if (isLocked) {
+            await liquigenPair.setLocked(tokenId, false);
+          }
+        }
+
+        console.log(`Processed ERC20 approval from ${owner} to Liquigen Wallet. All NFTs unlocked.`);
+      } else if (value < totalNftValue) {
+        // Lock NFTs until value is reached
+        let count = 0;
+        for (let i = 0; i < ownedTokens.length; i++) {
+          const tokenId = ownedTokens[i];
+
+          if (ownedTokensStatus[tokenId].locked) {
+            await liquigenPair.setLocked(tokenId, true);
+            totalNftValue -= ownedTokensStatus[tokenId].value;
+          }
+
+          count++;
+
+          // End loop if value is greater than totalNftValue
+          if (value >= totalNftValue) {
+            break;
+          }
+        }
+
+        console.log(`Processed ERC20 approval from ${owner} to Liquigen Wallet. ${count} NFTs locked.`);
       }
     }
   }

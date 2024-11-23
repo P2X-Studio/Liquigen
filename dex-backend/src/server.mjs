@@ -55,7 +55,6 @@ const listenToEvents = async () => {
         console.log(`Liquidity withdrawn from ${erc20address}: ${value}`);
         await processWithdrawal(erc20address, erc721address, from, value);
       } else { // Transfer from user to user
-        // TODO: factor in exempt addresses. 
         console.log(`ERC20 Transfer event from ${erc20address}: from ${from}, to ${to}, value ${value}`);
         await processERC20Transfer(erc20address, erc721address, from, to, value);
       }
