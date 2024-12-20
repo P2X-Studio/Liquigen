@@ -6,12 +6,44 @@ import {
 } from './config.mjs';
 import { calculateMintThreshold } from './holderQuery.mjs';
 import { ethers } from 'ethers';
+import { promises as fs } from 'fs';
 
 // TODO: Set Liquigen default values. These can be updated in-contract later
 const traitCID = '';
 const description = 'Liquigen NFT represent liquity positions!';
 // const liquigenWallet = await liquigenFactory.liquigenWallet(); // TODO: Use on-chain variable when live
 const liquigenWallet = '0xF1662217851e209928A5d0C13eA8277157c06519';
+
+async function updatePairsJson(erc20Address, erc721Address) {
+  const dataPath = './data/pairs.json';
+  
+  try {
+    let pairsData = { pairs: [] };
+
+    try {
+      const fileData = await fs.readFile(dataPath, 'utf-8');
+      pairsData = JSON.parse(fileData);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        throw error; 
+      }
+      console.log('pairs.json not found, creating a new one.');
+    }
+
+    // Append the new pair
+    pairsData.pairs.push({
+      erc20Address,
+      erc721Address,
+    });
+
+    // Write the updated data back to pairs.json
+    await fs.writeFile(dataPath, JSON.stringify(pairsData, null, 2), 'utf-8');
+    console.log(`Successfully updated pairs.json with new pair: { erc20Address: ${erc20Address}, erc721Address: ${erc721Address} }`);
+  } catch (error) {
+    console.error('Error updating pairs.json:', error);
+    throw error;
+  }
+}
 
 async function processPairCreated(token0, token1, pair) {
   // Determine pair name
@@ -22,8 +54,25 @@ async function processPairCreated(token0, token1, pair) {
   const name = `${token0Symbol}/${token1Symbol} Liquigen NFT`;
   // Determine pair symbol
   const symbol = `${token0Symbol}/${token1Symbol}_NFT`;
-  liquigenFactory.createPair(name, symbol, traitCID, description, liquigenWallet, pair);
-  // TODO: add to pairs.json
+  const tx = await liquigenFactory.createPair(
+    name, symbol, traitCID, description, liquigenWallet, pair
+  );
+
+  const receipt = await tx.wait();
+
+  const eventLogs = receipt.logs.map(log => {
+    try {
+        return liquigenFactory.interface.parseLog(log);
+    } catch (error) {
+        return null;
+    }
+  }).filter(event => event !== null);
+
+  const event = eventLogs.find(e => e.name === "PairCreated");
+  const liquigenPairAddress = event.args.liquigenPair;
+
+  console.log(`Created Liquigen NFT pair: ${liquigenPairAddress}`);
+  updatePairsJson(pair, liquigenPairAddress);
 }
 
 async function processDeposit(erc20, erc721, caller, value) {
