@@ -1,0 +1,12 @@
+{
+  "unprocessedDeposits": {
+    "0xErc20Address1": {
+      "0xUserAddress1": 1200000000000000000,
+      "0xUserAddress2": 500000000000000000
+    },
+    "0xErc20Address2": {
+      "0xUserAddress1": 1200000000000000000,
+      "0xUserAddress2": 500000000000000000
+    }
+  }
+}

@@ -75,7 +75,7 @@ async function processPairCreated(token0, token1, pair) {
   updatePairsJson(pair, liquigenPairAddress);
 }
 
-async function processDeposit(erc20, erc721, caller, value) {
+async function processDepositSIMPLE(erc20, erc721, caller, value) {
   // Update mintThreshold in LiquigenPair contract
   const mintThreshold = await calculateMintThreshold(erc20);
   await liquigenPair.setMintThreshold(mintThreshold);
@@ -86,8 +86,64 @@ async function processDeposit(erc20, erc721, caller, value) {
     const modifier = Math.floor(value / mintThreshold);
     liquigenPair.mint(caller, modifier);
   }
-
   console.log(`Minted NFT to ${caller} with a rarity modifier of ${modifier}`);
+}
+
+async function processDeposit(erc20, erc721, caller, value) {
+  const dataPath = './data/depositTracker.json';
+
+  // Load depositTracker.json or initialize a new tracker
+  let depositTracker = { unprocessedDeposits: {} };
+  try {
+    const fileData = await fs.readFile(dataPath, 'utf-8');
+    depositTracker = JSON.parse(fileData);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error; // Rethrow unexpected errors
+    }
+    console.log('depositTracker.json not found, creating a new one.');
+  }
+
+  // Initialize unprocessedDeposits for the erc20 and caller if missing
+  if (!depositTracker.unprocessedDeposits[erc20]) {
+    depositTracker.unprocessedDeposits[erc20] = {};
+  }
+  if (!depositTracker.unprocessedDeposits[erc20][caller]) {
+    depositTracker.unprocessedDeposits[erc20][caller] = 0;
+  }
+
+  // Calculate total deposit
+  const callerUnprocessedBalance = depositTracker.unprocessedDeposits[erc20][caller];
+  const totalDeposit = callerUnprocessedBalance + value;
+
+  // Mint NFTs if totalDeposit meets or exceeds mintThreshold
+  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+  const mintThreshold = await calculateMintThreshold(erc20);
+  await liquigenPair.setMintThreshold(mintThreshold);
+
+  if (totalDeposit >= mintThreshold) {
+    const modifier = Math.floor(totalDeposit / mintThreshold);
+    const leftoverBalance = totalDeposit % mintThreshold;
+
+    // Mint NFT
+    await liquigenPair.mint(caller, modifier);
+    console.log(`Minted NFT to ${caller} with a rarity modifier of ${modifier}`);
+
+    // Update the caller's unprocessed balance with the leftover
+    depositTracker.unprocessedDeposits[erc20][caller] = leftoverBalance;
+  } else {
+    // Update the caller's unprocessed balance without minting
+    depositTracker.unprocessedDeposits[erc20][caller] = totalDeposit;
+  }
+
+  // Save updated depositTracker
+  try {
+    await fs.writeFile(dataPath, JSON.stringify(depositTracker, null, 2), 'utf-8');
+    console.log(`Successfully updated depositTracker.json`);
+  } catch (error) {
+    console.error('Error updating depositTracker.json:', error);
+    throw error;
+  }
 }
 
 async function processWithdrawal(erc20, erc721, caller, value) {
