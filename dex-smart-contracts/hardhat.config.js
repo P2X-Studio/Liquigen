@@ -50,6 +50,12 @@ module.exports = {
             runs: 200,
           },
         },
+        outputSelection: {
+          "*": {
+            "*": ["metadata", "evm.bytecode", "evm.deployedBytecode", "abi"],
+            "": ["ast"], 
+          },
+        },
       },
       {
         version: "0.8.24",
@@ -62,4 +68,10 @@ module.exports = {
       },
     ],
   },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts",
+  }
 };
