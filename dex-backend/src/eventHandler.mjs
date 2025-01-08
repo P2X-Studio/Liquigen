@@ -1,5 +1,6 @@
 import { 
   provider, 
+  liquigenWallet, 
   liquigenFactory, 
   liquigenPairAbi, 
   dexPairAbi
@@ -11,8 +12,6 @@ import { promises as fs } from 'fs';
 // TODO: Set Liquigen default values. These can be updated in-contract later
 const traitCID = '';
 const description = 'Liquigen NFT represent liquity positions!';
-// const liquigenWallet = await liquigenFactory.liquigenWallet(); // TODO: Use on-chain variable when live
-const liquigenWallet = '0xF1662217851e209928A5d0C13eA8277157c06519';
 
 async function updatePairsJson(erc20Address, erc721Address) {
   const dataPath = './data/pairs.json';
@@ -55,7 +54,7 @@ async function processPairCreated(token0, token1, pair) {
   // Determine pair symbol
   const symbol = `${token0Symbol}/${token1Symbol}_NFT`;
   const tx = await liquigenFactory.createPair(
-    name, symbol, traitCID, description, liquigenWallet, pair
+    name, symbol, traitCID, description, pair
   );
 
   const receipt = await tx.wait();
@@ -80,7 +79,7 @@ async function processDepositSIMPLE(erc20, erc721, caller, value) {
   const mintThreshold = await calculateMintThreshold(erc20);
   await liquigenPair.setMintThreshold(mintThreshold);
 
-  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, liquigenWallet);
 
   if (value >= mintThreshold) {
     const modifier = Math.floor(value / mintThreshold);
@@ -114,10 +113,11 @@ async function processDeposit(erc20, erc721, caller, value) {
 
   // Calculate total deposit
   const callerUnprocessedBalance = depositTracker.unprocessedDeposits[erc20][caller];
-  const totalDeposit = callerUnprocessedBalance + value;
+  console.log('types: ', typeof callerUnprocessedBalance, typeof value);
+  const totalDeposit = BigInt(callerUnprocessedBalance) + value;
 
   // Mint NFTs if totalDeposit meets or exceeds mintThreshold
-  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, liquigenWallet);
   const mintThreshold = await calculateMintThreshold(erc20);
   await liquigenPair.setMintThreshold(mintThreshold);
 
@@ -151,7 +151,7 @@ async function processWithdrawal(erc20, erc721, caller, value) {
   const mintThreshold = await calculateMintThreshold(erc20);
   await liquigenPair.setMintThreshold(mintThreshold);
 
-  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, liquigenWallet);
   const ownedTokens = liquigenPair.tokensOfOwner(caller);
   
   // Calculate total value of NFTs
@@ -190,7 +190,7 @@ async function processERC20Transfer(erc721, caller, recipient, value) {
   const callerExempt = await liquigenFactory.exempt(caller);
   const recipientExempt = await liquigenFactory.exempt(recipient);
 
-  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+  const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, liquigenWallet);
 
   let ownedTokens, amount;
 
@@ -230,8 +230,8 @@ async function processERC20Transfer(erc721, caller, recipient, value) {
 }
 
 async function processERC20Approval(erc20, erc721, owner, spender, value) {
-  if (spender === liquigenWallet) {
-    const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, provider);
+  if (spender === liquigenWallet.address) {
+    const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, liquigenWallet);
     const ownedTokens = await liquigenPair.tokensOfOwner(owner);
 
     if (value === 0) {

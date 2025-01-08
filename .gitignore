@@ -13,3 +13,4 @@ layers.zip
 /dex-backend/node_modules
 /dex-backend/node_modules
 dex-backend/.env
+dex-backend/src/.env

@@ -9,14 +9,16 @@ async function getHoldersAndBalances(pairContract) {
   const uniqueHolders = {};
   let nextPageParams = {};
 
-  while (true) {
+  while (true) { // TODO swap to mainnet
     let response;
     if (nextPageParams.address_hash) {
-      response = await fetch(`https://explorer.mode.network/api/v2/tokens/${pairContract}/holders?address_hash=${nextPageParams.address_hash}&items_count=${nextPageParams.items_count}&value=${nextPageParams.value}`);
+      response = await fetch(`https://sepolia.explorer.mode.network/api/v2/tokens/${pairContract}/holders?address_hash=${nextPageParams.address_hash}&items_count=${nextPageParams.items_count}&value=${nextPageParams.value}`);
     } else {
-      response = await fetch(`https://explorer.mode.network/api/v2/tokens/${pairContract}/holders`);
+      response = await fetch(`https://sepolia.explorer.mode.network/api/v2/tokens/${pairContract}/holders`);
     }
     const data = await response.json();
+
+    // console.log(data);
 
     // Add the holders from the current page to the uniqueHolders object
     for (const holder of data.items) {
@@ -47,6 +49,7 @@ async function getHoldersAndBalances(pairContract) {
 }
 
 function calculateTop80Percentile(balances) {
+  // TODO: account for 0 balances and single holders
   console.log("Calculating 80th percentile...");
 
   if (balances.length === 0) {
@@ -86,7 +89,7 @@ async function calculateMintThreshold(pairAddress) {
 }
 
 // (async () => {
-//   calculateMintThreshold('0x293f2B2c17f8cEa4db346D87Ef5712C9dd0491EF');
+//   calculateMintThreshold('0x0618dCee223B5175608b3CCf849BB2471F367869');
 // })();
 
 
