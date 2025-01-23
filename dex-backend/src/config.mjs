@@ -11,16 +11,16 @@ config();
 
 // Initialize ethers provider
 // const provider = new ethers.JsonRpcProvider(process.env.MAINNET_RPC);
-const provider = new ethers.JsonRpcProvider(process.env.TESTNET_RPC);
+const provider = new ethers.JsonRpcProvider(process.env.TESTNET_RPC_CONDUIT);
 
 // Signer confuiguration
 const liquigenWallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 // Contract configuration
-const dexFactoryAddress = '0xAb1eD9375097Be451BFDd6A5011FA271124B6349'; // TODO: Update this address
+const dexFactoryAddress = process.env.DEX_FACTORY;
 const dexFactory = new ethers.Contract(dexFactoryAddress, dexFactoryAbi.abi, liquigenWallet);
 
-const liquigenFactoryAddress = '0xA71bCDf3995Ca8133eb41b0A381a1A6ab2296B3a'; // TODO: Update this address
+const liquigenFactoryAddress = process.env.LIQUIGEN_FACTORY;
 const liquigenFactory = new ethers.Contract(liquigenFactoryAddress, liquigenFactoryAbi.abi, liquigenWallet);
 
 async function loadPairs () {

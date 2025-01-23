@@ -18,16 +18,16 @@ async function main() {
   await LiquigenFactory.waitForDeployment();
   console.log(`LiquigenFactory deployed at: ${LiquigenFactory.target}`);
 
-  console.log("Verifying contracts...");
-  await hre.run("verify:verify", {
-    address: MetadataLibrary.target,
-  });
-  await hre.run("verify:verify", {
-    address: LiquigenFactory.target,
-    libraries: {
-      MetadataLibrary: MetadataLibrary.target,
-    },
-  });
+  // console.log("Verifying contracts...");
+  // await hre.run("verify:verify", {
+  //   address: MetadataLibrary.target,
+  // });
+  // await hre.run("verify:verify", {
+  //   address: LiquigenFactory.target,
+  //   libraries: {
+  //     MetadataLibrary: MetadataLibrary.target,
+  //   },
+  // });
   // await hre.run("verify:verify", {
   //   address: '0xA71bCDf3995Ca8133eb41b0A381a1A6ab2296B3a',
   //   libraries: {

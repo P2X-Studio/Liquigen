@@ -37,7 +37,7 @@ async function updatePairsJson(erc20Address, erc721Address) {
 
     // Write the updated data back to pairs.json
     await fs.writeFile(dataPath, JSON.stringify(pairsData, null, 2), 'utf-8');
-    console.log(`Successfully updated pairs.json with new pair: { erc20Address: ${erc20Address}, erc721Address: ${erc721Address} }`);
+    console.log(`Successfully added new pair: { erc20Address: ${erc20Address}, erc721Address: ${erc721Address} }`);
   } catch (error) {
     console.error('Error updating pairs.json:', error);
     throw error;
@@ -71,7 +71,9 @@ async function processPairCreated(token0, token1, pair) {
   const liquigenPairAddress = event.args.liquigenPair;
 
   console.log(`Created Liquigen NFT pair: ${liquigenPairAddress}`);
-  updatePairsJson(pair, liquigenPairAddress);
+  await updatePairsJson(pair, liquigenPairAddress);
+
+  return liquigenPairAddress;
 }
 
 async function processDepositSIMPLE(erc20, erc721, caller, value) {
@@ -103,18 +105,23 @@ async function processDeposit(erc20, erc721, caller, value) {
     console.log('depositTracker.json not found, creating a new one.');
   }
 
+  let callerMinted = false;
+
   // Initialize unprocessedDeposits for the erc20 and caller if missing
   if (!depositTracker.unprocessedDeposits[erc20]) {
     depositTracker.unprocessedDeposits[erc20] = {};
   }
+
   if (!depositTracker.unprocessedDeposits[erc20][caller]) {
     depositTracker.unprocessedDeposits[erc20][caller] = 0;
+  } else {
+    callerMinted = true;
   }
 
   // Calculate total deposit
-  const callerUnprocessedBalance = depositTracker.unprocessedDeposits[erc20][caller];
+  const callerUnprocessedBalance = BigInt(depositTracker.unprocessedDeposits[erc20][caller]);
   console.log('types: ', typeof callerUnprocessedBalance, typeof value);
-  const totalDeposit = BigInt(callerUnprocessedBalance) + value;
+  const totalDeposit = callerUnprocessedBalance + BigInt(value);
 
   // Mint NFTs if totalDeposit meets or exceeds mintThreshold
   const liquigenPair = new ethers.Contract(erc721, liquigenPairAbi.abi, liquigenWallet);
@@ -122,18 +129,32 @@ async function processDeposit(erc20, erc721, caller, value) {
   await liquigenPair.setMintThreshold(mintThreshold);
 
   if (totalDeposit >= mintThreshold) {
-    const modifier = Math.floor(totalDeposit / mintThreshold);
-    const leftoverBalance = totalDeposit % mintThreshold;
+    let modifier = 1;
+    let leftoverBalance = 0;
+
+    if (mintThreshold === 0) {
+      // Use default values
+    } else if (mintThreshold === 999) {
+      // Mint NFT with a modifier of 3 for the first 10 liquidity providers
+      console.log(callerMinted);
+      modifier = 3;
+    } else {
+      modifier = Math.floor(Number(totalDeposit / mintThreshold));
+      leftoverBalance = Number(totalDeposit % mintThreshold);
+    }
+
+    // const modifier = mintThreshold === 0 ? 1 : Number(totalDeposit / mintThreshold);
+    // const leftoverBalance = mintThreshold === 0 ? 0 : totalDeposit % mintThreshold;
 
     // Mint NFT
     await liquigenPair.mint(caller, modifier);
     console.log(`Minted NFT to ${caller} with a rarity modifier of ${modifier}`);
 
     // Update the caller's unprocessed balance with the leftover
-    depositTracker.unprocessedDeposits[erc20][caller] = leftoverBalance;
+    depositTracker.unprocessedDeposits[erc20][caller] = Number(leftoverBalance);
   } else {
     // Update the caller's unprocessed balance without minting
-    depositTracker.unprocessedDeposits[erc20][caller] = totalDeposit;
+    depositTracker.unprocessedDeposits[erc20][caller] = Number(totalDeposit);
   }
 
   // Save updated depositTracker
@@ -147,6 +168,18 @@ async function processDeposit(erc20, erc721, caller, value) {
 }
 
 async function processWithdrawal(erc20, erc721, caller, value) {
+  /* RICKY: TODO: 
+  This logic needs to be adjusted. As it stands, it's still calculating a
+  NUMBER of NFT to burn based on mintthreshold. This is incorrect. We need to
+  extract the valueAtMint (rarity modifier) and burn the appropriate amount
+  based on value. 
+  We also need to account for partial withdraws and what that may mean for remainder
+  For example, if someone withdraws 90% of their liquidity, it may burn all their NFT.
+  It's possible that the 10% they have left meets the mintThreshold, so this amount should
+  be added to their unprocessed balance, and a new NFT minted if it meets the threshold.
+
+  */
+
   // Update mintThreshold in LiquigenPair contract
   const mintThreshold = await calculateMintThreshold(erc20);
   await liquigenPair.setMintThreshold(mintThreshold);

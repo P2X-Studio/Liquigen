@@ -1,12 +1,8 @@
 {
   "pairs": [
     {
-      "erc20Address": "0xAb1eD9375097Be451BFDd6A5011FA271124B6349",
-      "erc721Address": "0xA71bCDf3995Ca8133eb41b0A381a1A6ab2296B3a"
-    },
-    {
-      "erc20Address": "0x0618dCee223B5175608b3CCf849BB2471F367869",
-      "erc721Address": "0x5a2Fb83f0217b3516a73208cf6C7d13A3Bc69D39"
+      "erc20Address": "0x4a41A3ecd3CcC925Ae8A5FeB7d8f5fb9Ffa8c945",
+      "erc721Address": "0x52BD4742C1663B7E9c9525461F87db0748136e5a"
     }
   ]
 }

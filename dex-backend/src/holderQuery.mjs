@@ -13,8 +13,10 @@ async function getHoldersAndBalances(pairContract) {
     let response;
     if (nextPageParams.address_hash) {
       response = await fetch(`https://sepolia.explorer.mode.network/api/v2/tokens/${pairContract}/holders?address_hash=${nextPageParams.address_hash}&items_count=${nextPageParams.items_count}&value=${nextPageParams.value}`);
+      // response = await fetch(`https://explorer.mode.network/api/v2/tokens/${pairContract}/holders?address_hash=${nextPageParams.address_hash}&items_count=${nextPageParams.items_count}&value=${nextPageParams.value}`);
     } else {
       response = await fetch(`https://sepolia.explorer.mode.network/api/v2/tokens/${pairContract}/holders`);
+      // response = await fetch(`https://explorer.mode.network/api/v2/tokens/${pairContract}/holders`);
     }
     const data = await response.json();
 
@@ -46,6 +48,7 @@ async function getHoldersAndBalances(pairContract) {
 
   // Return array of non-zero balances;
   return Object.values(uniqueHolders);
+  // return uniqueHolders;
 }
 
 function calculateTop80Percentile(balances) {
@@ -63,7 +66,7 @@ function calculateTop80Percentile(balances) {
 
   // Calculate the index for the 80th percentile
   const totalHolders = balances.length;
-  const targetIndex = Math.floor(totalHolders * 0.8) - 1;
+  const targetIndex = Math.floor(totalHolders * 0.8) === 0 ? 0 : Math.floor(totalHolders * 0.8) - 1;
   console.log(`Target index for 80th percentile: ${targetIndex}`);
 
   // Return the balance at the 80th percentile in WEI
@@ -79,17 +82,17 @@ async function calculateMintThreshold(pairAddress) {
 
   // Step 1: Fetch holders and their balances
   const balances = await getHoldersAndBalances(pairAddress);
-  // console.log("Balances fetched:", balances);
 
   // Step 2: Calculate the top 80% threshold
-  const mintThreshold = calculateTop80Percentile(balances);
+  const mintThreshold = balances.length > 10 ? calculateTop80Percentile(balances) : 999;
 
   console.log(`Mint threshold (80th percentile) for pair ${pairAddress}:`, mintThreshold.toString());
   return mintThreshold;
 }
 
 // (async () => {
-//   calculateMintThreshold('0x0618dCee223B5175608b3CCf849BB2471F367869');
+//   // calculateMintThreshold('0x293f2B2c17f8cEa4db346D87Ef5712C9dd0491EF');
+//   calculateMintThreshold('0x46BE2d2BA4FE3343Ac3BD338EB4D244D14B3e2C3');
 // })();
 
 
