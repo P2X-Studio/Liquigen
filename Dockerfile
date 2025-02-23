@@ -1,7 +1,7 @@
 FROM node:20.10.0
 
 # Set the working directory for the app
-WORKDIR /aA
+WORKDIR /app
 
 # Copy both directories into the container
 COPY dex-backend ./dex-backend
