@@ -29,7 +29,7 @@ RUN npm install && npx hardhat compile
 # Copy the backend code and install its dependencies
 WORKDIR /app
 COPY dex-backend ./dex-backend
-WORKDIR /app/dex-backend
+WORKDIR /app/dex-backend/src
 RUN npm install
 
 # Start the server
