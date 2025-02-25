@@ -22,12 +22,11 @@ ENV PRIVATE_KEY=${PRIVATE_KEY}
 WORKDIR /app
 
 # Copy and compile the smart contracts
-COPY dex-smart-contracts ./dex-smart-contracts
-WORKDIR /app/dex-smart-contracts
-RUN npm install && npx hardhat compile
+# COPY dex-smart-contracts ./dex-smart-contracts
+# WORKDIR /app/dex-smart-contracts
+# RUN npm install && npx hardhat compile
 
 # Copy the backend code and install its dependencies
-WORKDIR /app
 COPY dex-backend ./dex-backend
 WORKDIR /app/dex-backend/src
 RUN npm install

@@ -3,6 +3,10 @@
     {
       "erc20Address": "0x4a41A3ecd3CcC925Ae8A5FeB7d8f5fb9Ffa8c945",
       "erc721Address": "0x52BD4742C1663B7E9c9525461F87db0748136e5a"
+    },
+    {
+      "erc20Address": "0xFDB8f959e29Cf990E381375E6fE7Ae714167b3c6",
+      "erc721Address": "0x3746ad4F0550E4F74De3A559936D1e66a5245249"
     }
   ]
 }

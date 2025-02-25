@@ -1,10 +1,14 @@
 import { config } from 'dotenv';
 import { ethers } from 'ethers';
 import { promises as fs } from 'fs';
-import liquigenFactoryAbi from '../../dex-smart-contracts/artifacts/contracts/LiquigenFactory.sol/LiquigenFactory.json' assert { type: 'json' };
-import liquigenPairAbi from '../../dex-smart-contracts/artifacts/contracts/LiquigenPair.sol/LiquigenPair.json' assert { type: 'json' };
-import dexFactoryAbi from '../../dex-smart-contracts/artifacts/contracts/interfaces/IUniswapV2Factory.sol/IUniswapV2Factory.json' assert { type: 'json' };
-import dexPairAbi from '../../dex-smart-contracts/artifacts/contracts/interfaces/IUniswapV2Pair.sol/IUniswapV2Pair.json' assert { type: 'json' };
+// import liquigenFactoryAbi from '../../dex-smart-contracts/artifacts/contracts/LiquigenFactory.sol/LiquigenFactory.json' assert { type: 'json' };
+// import liquigenPairAbi from '../../dex-smart-contracts/artifacts/contracts/LiquigenPair.sol/LiquigenPair.json' assert { type: 'json' };
+// import dexFactoryAbi from '../../dex-smart-contracts/artifacts/contracts/interfaces/IUniswapV2Factory.sol/IUniswapV2Factory.json' assert { type: 'json' };
+// import dexPairAbi from '../../dex-smart-contracts/artifacts/contracts/interfaces/IUniswapV2Pair.sol/IUniswapV2Pair.json' assert { type: 'json' };
+import liquigenFactoryAbi from './abi/LiquigenFactory.json' assert { type: 'json' };
+import liquigenPairAbi from './abi/LiquigenPair.json' assert { type: 'json' };
+import dexFactoryAbi from './abi/IUniswapV2Factory.json' assert { type: 'json' };
+import dexPairAbi from './abi/IUniswapV2Pair.json' assert { type: 'json' };
 import { sign } from 'crypto';
 
 config();
