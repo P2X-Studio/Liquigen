@@ -33,4 +33,4 @@ WORKDIR /app/dex-backend/src
 RUN npm install
 
 # Start the server
-CMD ["node", "src/server.mjs"]
+CMD ["node", "server.mjs"]
